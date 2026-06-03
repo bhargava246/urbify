@@ -1,0 +1,52 @@
+/** All backend API endpoint paths (relative to /api/v1) */
+export const endpoints = {
+  auth: {
+    register:   '/auth/register',
+    login:      '/auth/login',
+    otpSend:    '/auth/otp/send',
+    otpVerify:  '/auth/otp/verify',
+    refresh:    '/auth/refresh',
+    logout:     '/auth/logout',
+  },
+  users: {
+    me:         '/users/me',
+    meUpdate:   '/users/me',
+    myUnlocks:  '/users/me/unlocks',
+    list:       '/users',
+    setStatus:  (id: string) => `/users/${id}/status`,
+  },
+  properties: {
+    search:     '/properties',
+    cities:     '/properties/cities',
+    getPublic:  (id: string) => `/properties/${id}`,
+    getFull:    (id: string) => `/properties/${id}/full`,
+    create:     '/properties',
+    myListings: '/properties/my/listings',
+    update:     (id: string) => `/properties/${id}`,
+    delete:     (id: string) => `/properties/${id}`,
+    setStatus:  (id: string) => `/properties/${id}/status`,
+    uploadPhotos: (id: string) => `/properties/${id}/photos`,
+    adminAll:   '/admin/properties',
+    moderate:   (id: string) => `/admin/properties/${id}/moderate`,
+  },
+  payments: {
+    createOrder: '/payments/orders',
+    verify:      '/payments/verify',
+    refund:      (id: string) => `/payments/refunds/${id}`,
+    revenue:     '/payments/revenue',
+  },
+  search: {
+    savedSave:    '/search/saved',
+    savedList:    '/search/saved',
+    savedDelete:  (id: string) => `/search/saved/${id}`,
+    shortlistAdd: (id: string) => `/search/shortlist/${id}`,
+    shortlistDel: (id: string) => `/search/shortlist/${id}`,
+    shortlistGet: '/search/shortlist',
+  },
+  notifications: {
+    list:       '/notifications',
+    unreadCount:'/notifications/unread-count',
+    readAll:    '/notifications/read-all',
+    readOne:    (id: string) => `/notifications/${id}/read`,
+  },
+};

@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en" data-density="regular" data-card="regular" data-dark="false">
+<head>
+<meta charset="utf-8"/>
+<title>Urbify — Design System (Print)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="styles.css"/>
+
+<style>
+  /* ─── Print container ─────────────────────────────────────── */
+  html, body { background:#f4f4f2; }
+  body { padding: 28px 0; }
+  .app, #root { background: transparent !important; }
+
+  /* Hide stuff that doesn't make sense in print */
+  .topbar, .twk-panel, .twk-toggle, [class*="MobilePreview"] { display: none !important; }
+
+  /* Full-page sections (cover + contents) — landscape A4-ish */
+  .print-page {
+    width: 1440px;
+    min-height: 920px;
+    background: var(--bg);
+    margin: 0 auto 24px;
+    padding: 80px 96px;
+    box-shadow: 0 4px 20px rgba(0,0,0,.08);
+    display: flex;
+    flex-direction: column;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  /* Wrapper around each rendered page */
+  .print-page-wrap {
+    width: 1440px;
+    background: var(--bg);
+    margin: 0 auto 24px;
+    box-shadow: 0 4px 20px rgba(0,0,0,.08);
+    break-after: page;
+    page-break-after: always;
+    overflow: hidden;
+    position: relative;
+  }
+  .print-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+  .print-page-content {
+    /* Override any sticky positioning, viewport heights, hover-only states */
+    background: var(--bg);
+  }
+  .print-page-content * {
+    /* Sticky elements will misbehave when stacked vertically — neutralize */
+    position: static !important;
+  }
+  /* Restore the bits that legitimately need positioning (badges over photos, etc.) */
+  .print-page-content [style*="position: absolute"],
+  .print-page-content [style*="position:absolute"] {
+    position: absolute !important;
+  }
+  .print-page-content [style*="position: relative"],
+  .print-page-content [style*="position:relative"] {
+    position: relative !important;
+  }
+  /* Neutralize min-heights so each rendered page only takes its actual content space */
+  .print-page-content [style*="min-height:100vh"],
+  .print-page-content [style*="min-height: 100vh"],
+  .print-page-content [style*="min-height:calc(100vh"] {
+    min-height: 0 !important;
+  }
+  /* Portal pages set their own 100vh sidebar — collapse */
+  .print-page-content aside[style*="100vh"] {
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  /* ─── @media print ─────────────────────────────────────── */
+  @page {
+    size: 1440px 1080px;
+    margin: 0;
+  }
+
+  @media print {
+    html, body { background: #fff !important; padding: 0 !important; }
+    .print-page, .print-page-wrap {
+      width: 1440px !important;
+      margin: 0 !important;
+      box-shadow: none !important;
+      break-after: page;
+      page-break-after: always;
+    }
+    .print-page-wrap {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    /* Force background colors to print */
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
+    }
+    /* No animations during print */
+    *, *::before, *::after {
+      animation: none !important;
+      transition: none !important;
+    }
+    /* Hide page nav strip in print (keep on screen for review) */
+  }
+
+  .print-cover {
+    background: var(--bg);
+  }
+  .print-contents {
+    padding-top: 80px;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="data.jsx"></script>
+<script type="text/babel" src="components.jsx"></script>
+<script type="text/babel" src="home.jsx"></script>
+<script type="text/babel" src="search.jsx"></script>
+<script type="text/babel" src="detail.jsx"></script>
+<script type="text/babel" src="unlock.jsx"></script>
+<script type="text/babel" src="how.jsx"></script>
+<script type="text/babel" src="auth-pricing.jsx"></script>
+<script type="text/babel" src="portal-shell.jsx"></script>
+<script type="text/babel" src="owner-pages.jsx"></script>
+<script type="text/babel" src="client-broker-pages.jsx"></script>
+<script type="text/babel" src="admin-pages.jsx"></script>
+<script type="text/babel" src="admin-extra.jsx"></script>
+<script type="text/babel" src="info-pages.jsx"></script>
+<script type="text/babel" src="city-pages.jsx"></script>
+<script type="text/babel" src="blog-pages.jsx"></script>
+<script type="text/babel" src="extra-pages.jsx"></script>
+<script type="text/babel" src="mobile-preview.jsx"></script>
+<script type="text/babel" src="app-print.jsx"></script>
+
+<script type="text/babel">
+// Auto-trigger print once everything is laid out
+(async () => {
+  // Wait for fonts
+  if (document.fonts && document.fonts.ready) {
+    await document.fonts.ready;
+  }
+  // Wait for all images that are already in the DOM to load
+  const waitImages = () => Promise.all(
+    Array.from(document.images).map(img => img.complete
+      ? Promise.resolve()
+      : new Promise(res => { img.onload = img.onerror = res; })
+    )
+  );
+  // Give React a chance to mount and lay out
+  const ready = () => document.querySelectorAll('.print-page-wrap').length > 0;
+  await new Promise(res => {
+    const tick = () => ready() ? res() : setTimeout(tick, 200);
+    tick();
+  });
+  await waitImages();
+  // Final safety buffer for late layout
+  await new Promise(res => setTimeout(res, 800));
+  window.print();
+})();
+</script>
+
+</body>
+</html>
