@@ -34,7 +34,7 @@ export class AuthService {
 
   // ── Register ──────────────────────────────────────────────────────────────────
 
-  async register(dto: RegisterDto): Promise<TokenPair> {
+  async register(dto: RegisterDto): Promise<{ success: boolean; message: string }> {
     this.logger.log(`Register attempt for email: ${dto.email}`);
 
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
@@ -67,7 +67,7 @@ export class AuthService {
     // Send welcome OTP to verify email
     await this._sendOtpEmail(dto.email, user.id);
 
-    return this.generateTokens({ sub: user.id, email: user.email!, role: user.role });
+    return { success: true, message: 'Verification OTP sent to your email. Please verify.' };
   }
 
   // ── Login ─────────────────────────────────────────────────────────────────────
@@ -83,6 +83,8 @@ export class AuthService {
       throw new UnauthorizedException('Account is banned');
     if (!user.isActive)
       throw new UnauthorizedException('Account is inactive');
+    if (!user.isVerified)
+      throw new UnauthorizedException('Please verify your email address first.');
 
     const ok = await bcrypt.compare(dto.password, user.passwordHash);
     if (!ok) throw new UnauthorizedException('Invalid credentials');

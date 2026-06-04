@@ -8,9 +8,8 @@ import {
   furnishingLabel, facingLabel, ageLabel, postedLabel, normalizeApiListing,
   AppDataContext, useAppData, OlaMap,
   Icon, Logo, Img, LockedAddress, ListingCard, Modal,
-  PortalShell, StatCard, StatusBadge, DashHeader,
+  PortalShell, StatCard, StatusBadge, DashHeader, Footer, Faq,
 } from '../_shared';
-import { Footer } from './home';
 
 function HowPage({nav}) {
   const [calcRent, setCalcRent] = useState(40000);
@@ -212,29 +211,6 @@ function HowPage({nav}) {
       </section>
 
       <Footer nav={nav}/>
-    </div>
-  );
-}
-
-function Faq({q, a}) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div style={{borderTop:'1px solid var(--border)'}}>
-      <button onClick={()=>setOpen(!open)} style={{
-        width:'100%', padding:'22px 0', display:'flex', justifyContent:'space-between', alignItems:'center',
-        background:'transparent', border:0, cursor:'pointer', textAlign:'left', font:'inherit', color:'var(--text)',
-      }}>
-        <span className="font-display" style={{fontSize:18, fontWeight:600, letterSpacing:'-0.015em'}}>{q}</span>
-        <span style={{
-          width:32, height:32, borderRadius:'50%',
-          background: open ? 'var(--text)' : 'var(--surface-sunken)',
-          color: open ? 'var(--bg)' : 'var(--text)',
-          display:'grid', placeItems:'center', fontSize:18, fontWeight:400,
-          transition:'transform .2s, background .2s',
-          transform: open ? 'rotate(45deg)' : 'none',
-        }}>+</span>
-      </button>
-      {open && <div className="pop-in" style={{paddingBottom:22, fontSize:15, color:'var(--text-muted)', lineHeight:1.6, maxWidth:720}}>{a}</div>}
     </div>
   );
 }

@@ -8,7 +8,7 @@ import {
   furnishingLabel, facingLabel, ageLabel, postedLabel, normalizeApiListing,
   AppDataContext, useAppData, OlaMap,
   Icon, Logo, Img, LockedAddress, ListingCard, Modal,
-  PortalShell, StatCard, StatusBadge, DashHeader,
+  PortalShell, StatCard, StatusBadge, DashHeader, Footer, MiniMap,
 } from '../_shared';
 
 function DetailPage({nav, listingId, savedIds, onSave, onUnlock}) {
@@ -317,20 +317,6 @@ function Stat({label, value}) {
       <div style={{fontSize:11, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.06em'}}>{label}</div>
       <div className="font-display" style={{fontSize:18, fontWeight:700, marginTop:2}}>{value}</div>
     </div>
-  );
-}
-
-function MiniMap({label, lat, lng, onPinDrop}) {
-  // Default to Bangalore Koramangala if no coords yet
-  const center = (lat && lng) ? [lng, lat] : [77.6177, 12.9352];
-  return (
-    <OlaMap
-      center={center}
-      zoom={15}
-      draggablePin={true}
-      onPinDrop={onPinDrop}
-      height="100%"
-    />
   );
 }
 

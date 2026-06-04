@@ -10,6 +10,7 @@ import {
   Icon, Logo, Img, LockedAddress, ListingCard, Modal,
   PortalShell, StatCard, StatusBadge, DashHeader,
 } from '../_shared';
+import { Field } from './owner';
 
 // ADMIN_USER is now derived from authUser in each component
 

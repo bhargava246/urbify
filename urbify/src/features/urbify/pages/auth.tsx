@@ -10,7 +10,7 @@ import {
   Icon, Logo, Img, LockedAddress, ListingCard, Modal,
   PortalShell, StatCard, StatusBadge, DashHeader,
 } from '../_shared';
-import { Footer } from './home';
+
 
 function AuthPage({nav}) {
   const [tab,      setTab]      = useState("tenant");   // owner | tenant | broker
@@ -77,7 +77,7 @@ function AuthPage({nav}) {
       }
       if (userObj) localStorage.setItem('urb_user', JSON.stringify(userObj));
       window.dispatchEvent(new Event('urbify:auth'));
-      window.location.href = dashFor(userObj);
+      window.location.href = '/';
     } catch(err) { setError(err.message); }
     finally { setLoading(false); }
   };
@@ -95,6 +95,22 @@ function AuthPage({nav}) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Registration failed');
+      setOtp(["","","","","",""]);
+      setMode('verify');
+      setSuccess('Account created! Verification code sent to your email.');
+    } catch(err) { setError(err.message); }
+    finally { setLoading(false); }
+  };
+
+  const handleVerifySignup = async () => {
+    setError(""); setLoading(true);
+    try {
+      const res = await fetch('/api/v1/auth/otp/verify', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ email, otp: otp.join('') }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Verification failed');
       if (data.accessToken)  localStorage.setItem('urb_access',  data.accessToken);
       if (data.refreshToken) localStorage.setItem('urb_refresh', data.refreshToken);
       let userObj = data.user || null;
@@ -104,7 +120,7 @@ function AuthPage({nav}) {
       }
       if (userObj) localStorage.setItem('urb_user', JSON.stringify(userObj));
       window.dispatchEvent(new Event('urbify:auth'));
-      window.location.href = dashFor(userObj);
+      window.location.href = '/';
     } catch(err) { setError(err.message); }
     finally { setLoading(false); }
   };
@@ -183,18 +199,18 @@ function AuthPage({nav}) {
         {/* Header */}
         <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:8}}>
           <h2 className="font-display" style={{fontSize:30, fontWeight:800, letterSpacing:'-0.03em', margin:0}}>
-            {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Get started' : mode === 'forgot' ? 'Reset password' : 'Choose new password'}
+            {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Get started' : mode === 'forgot' ? 'Reset password' : mode === 'verify' ? 'Verify email' : 'Choose new password'}
           </h2>
           {(mode === 'login' || mode === 'signup') && (
             <button onClick={()=>{ setMode(mode==='login'?'signup':'login'); setError(''); }} className="btn btn-ghost btn-sm">
               {mode === 'login' ? 'Create account' : 'Sign in instead'}
             </button>
           )}
-          {(mode === 'forgot' || mode === 'reset') && (
+          {(mode === 'forgot' || mode === 'reset' || mode === 'verify') && (
             <button onClick={()=>{ setMode('login'); setError(''); }} className="btn btn-ghost btn-sm">← Back to login</button>
           )}
         </div>
-        <p className="muted" style={{fontSize:15, marginBottom:24}}>{mode === 'login' || mode === 'signup' ? cur.sub : mode === 'forgot' ? "We'll email you a one-time code" : "Enter the OTP sent to your email"}</p>
+        <p className="muted" style={{fontSize:15, marginBottom:24}}>{mode === 'login' || mode === 'signup' ? cur.sub : mode === 'forgot' ? "We'll email you a one-time code" : mode === 'verify' ? "Enter the OTP sent to your email to verify your account" : "Enter the OTP sent to your email"}</p>
 
         {/* Role tabs — only on login/signup */}
         {(mode === 'login' || mode === 'signup') && (
@@ -343,6 +359,31 @@ function AuthPage({nav}) {
             <button className="btn btn-brand btn-lg btn-block"
               disabled={otp.filter(Boolean).length!==6||!password||loading} onClick={handleReset}>
               {loading ? 'Resetting…' : <>Reset password <Icon.arrow/></>}
+            </button>
+          </div>
+        )}
+
+        {/* ── VERIFY EMAIL ── */}
+        {mode === 'verify' && (
+          <div style={{display:'flex', flexDirection:'column', gap:14}}>
+            <div style={{fontSize:13, color:'var(--text-muted)', padding:'10px 14px', background:'var(--surface-sunken)', borderRadius:'var(--r-sm)'}}>
+              A 6-digit verification code has been sent to <strong style={{color:'var(--text)'}}>{email}</strong>. Please enter it below to activate your account.
+            </div>
+            <div>
+              <label style={{fontSize:12, color:'var(--text-muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.08em'}}>Enter OTP</label>
+              <div style={{display:'flex', gap:8, marginTop:8}}>
+                {otp.map((d,i)=>(
+                  <input key={i} ref={el=>otpRefs.current[i]=el} className="input"
+                    value={d} onChange={e=>updateOtp(i,e.target.value)}
+                    onKeyDown={e=>{ if(e.key==='Backspace'&&!d&&i>0) otpRefs.current[i-1]?.focus(); }}
+                    maxLength="1" inputMode="numeric"
+                    style={{width:48, height:56, textAlign:'center', fontSize:22, fontWeight:700}}/>
+                ))}
+              </div>
+            </div>
+            <button className="btn btn-brand btn-lg btn-block"
+              disabled={otp.filter(Boolean).length!==6||loading} onClick={handleVerifySignup}>
+              {loading ? 'Verifying…' : <>Verify & Complete Signup <Icon.arrow/></>}
             </button>
           </div>
         )}
@@ -510,5 +551,13 @@ function CompRow({row, cells, good, last}) {
   );
 }
 
+function Row({label, value, big}) {
+  return (
+    <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', padding:'8px 0'}}>
+      <span style={{fontSize:13, color: big ? 'var(--text)' : 'var(--text-muted)', fontWeight: big ? 700 : 500}}>{label}</span>
+      <span className="font-mono" style={{fontSize: big ? 16 : 14, fontWeight: big ? 800 : 600}}>{value}</span>
+    </div>
+  );
+}
 
 export { AuthPage, PricingPage };

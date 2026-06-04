@@ -10,6 +10,7 @@ import {
   Icon, Logo, Img, LockedAddress, ListingCard, Modal,
   PortalShell, StatCard, StatusBadge, DashHeader,
 } from '../_shared';
+import { CLIENT_USER, CLIENT_NAV } from './client-broker';
 
 function NotificationsPage({nav}) {
   const { authUser } = useAppData();

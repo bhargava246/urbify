@@ -14,10 +14,10 @@ import {
 // ---- client-broker-pages.jsx ----
 // client-broker-pages.jsx — Tenant/buyer dashboard + Broker portal
 
-const CLIENT_USER = { initials:"?", name:"Loading…", role:"Tenant", color:'var(--accent-500)' };
-const BROKER_USER = { initials:"?", name:"Loading…", role:"Broker", color:'var(--text)' };
+export const CLIENT_USER = { initials:"?", name:"Loading…", role:"Tenant", color:'var(--accent-500)' };
+export const BROKER_USER = { initials:"?", name:"Loading…", role:"Broker", color:'var(--text)' };
 
-const CLIENT_NAV = () => [
+export const CLIENT_NAV = () => [
   { id:'clientDash',    label:'Dashboard',    icon:'◧' },
   { id:'clientShort',   label:'Shortlisted',  icon:'♡' },
   { id:'clientTx',      label:'Transactions', icon:'≡' },

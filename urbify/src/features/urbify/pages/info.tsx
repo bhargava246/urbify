@@ -8,8 +8,9 @@ import {
   furnishingLabel, facingLabel, ageLabel, postedLabel, normalizeApiListing,
   AppDataContext, useAppData, OlaMap,
   Icon, Logo, Img, LockedAddress, ListingCard, Modal,
-  PortalShell, StatCard, StatusBadge, DashHeader,
+  PortalShell, StatCard, StatusBadge, DashHeader, Footer, Faq,
 } from '../_shared';
+import { Field } from './owner';
 
 function AboutPage({nav}) {
   return (

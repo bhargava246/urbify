@@ -9,6 +9,19 @@ export const OlaMap = dynamic(
   { ssr: false, loading: () => <div style={{height:280,background:'#e8ede9',borderRadius:'var(--r-md)',display:'grid',placeItems:'center',color:'#9ca3af',fontSize:13}}>Loading map…</div> }
 );
 
+export function MiniMap({label, lat, lng, onPinDrop}: any) {
+  const center = (lat && lng) ? [lng, lat] : [77.6177, 12.9352];
+  return (
+    <OlaMap
+      center={center}
+      zoom={15}
+      draggablePin={true}
+      onPinDrop={onPinDrop}
+      height="100%"
+    />
+  );
+}
+
 // ---- data.jsx ----
 // data.jsx — mock listings + cities for Urbify
 
@@ -506,6 +519,74 @@ function DashHeader({title, subtitle, actions}) {
 
 
 
+// ─── Helper: footer ─────────────────────────────────────────────────────
+function Footer({nav}: any) {
+  return (
+    <footer style={{background:'var(--text)', color:'var(--bg)', padding:'72px 28px 32px', marginTop:0}}>
+      <div style={{maxWidth:1440, margin:'0 auto'}}>
+        <div style={{display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr 1fr', gap:48, paddingBottom:48, borderBottom:'1px solid rgba(255,255,255,.12)'}}>
+          <div>
+            <div className="font-display" style={{fontSize:36, fontWeight:800, letterSpacing:'-0.04em'}}>urbify</div>
+            <p style={{maxWidth:300, fontSize:14, opacity:.6, marginTop:16, lineHeight:1.6}}>
+              Real estate, fair & simple. Owners list free, tenants pay one fee, brokers keep it all.
+            </p>
+          </div>
+          <FooterCol title="Rent" items={["Bangalore","Mumbai","Pune","Delhi NCR","Hyderabad","All cities →"]}/>
+          <FooterCol title="Buy" items={["Apartments","Villas","Plots","Commercial","Premium homes"]}/>
+          <FooterCol title="Company" items={[{l:"How it works", k:'how'}, "Pricing", "Blog", "About", "Press"]} nav={nav}/>
+          <FooterCol title="Support" items={["FAQ", "Contact", "Refund policy", "RERA compliance", "Grievance officer"]}/>
+        </div>
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:32, fontSize:12, opacity:.5}}>
+          <div>© 2026 Urbify Technologies Pvt. Ltd. · CIN U72200KA2024PTC123456</div>
+          <div style={{display:'flex', gap:16}}><span>Privacy</span><span>Terms</span><span>Cookies</span></div>
+        </div>
+      </div>
+    </footer>
+  );
+}
+function FooterCol({title, items, nav}: any) {
+  return (
+    <div>
+      <div style={{fontSize:11, fontWeight:600, letterSpacing:'.1em', textTransform:'uppercase', opacity:.55, marginBottom:18}}>{title}</div>
+      <ul style={{listStyle:'none', padding:0, margin:0, display:'flex', flexDirection:'column', gap:10}}>
+        {items.map((it: any, i: number) => {
+          const label = typeof it === 'string' ? it : it.l;
+          const k = typeof it === 'string' ? null : it.k;
+          return (
+            <li key={i} style={{fontSize:14, opacity:.8, cursor: k?'pointer':'default'}}
+                onClick={()=> k && nav(k)}>
+              {label}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function Faq({q, a}: {q: string, a: string}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{borderTop:'1px solid var(--border)'}}>
+      <button onClick={()=>setOpen(!open)} style={{
+        width:'100%', padding:'22px 0', display:'flex', justifyContent:'space-between', alignItems:'center',
+        background:'transparent', border:0, cursor:'pointer', textAlign:'left', font:'inherit', color:'var(--text)',
+      }}>
+        <span className="font-display" style={{fontSize:18, fontWeight:600, letterSpacing:'-0.015em'}}>{q}</span>
+        <span style={{
+          width:32, height:32, borderRadius:'50%',
+          background: open ? 'var(--text)' : 'var(--surface-sunken)',
+          color: open ? 'var(--bg)' : 'var(--text)',
+          display:'grid', placeItems:'center', fontSize:18, fontWeight:400,
+          transition:'transform .2s, background .2s',
+          transform: open ? 'rotate(45deg)' : 'none',
+        }}>+</span>
+      </button>
+      {open && <div className="pop-in" style={{paddingBottom:22, fontSize:15, color:'var(--text-muted)', lineHeight:1.6, maxWidth:720}}>{a}</div>}
+    </div>
+  );
+}
+
 // ── Named exports ─────────────────────────────────────────────────────────────
 export {
   // data
@@ -519,4 +600,5 @@ export {
   Icon, Logo, Img, LockedAddress, ListingCard, Modal,
   // portal shell
   PortalShell, StatCard, StatusBadge, DashHeader,
+  Footer, FooterCol, Faq, MiniMap,
 };

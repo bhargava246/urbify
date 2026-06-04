@@ -8,9 +8,10 @@ import {
   furnishingLabel, facingLabel, ageLabel, postedLabel, normalizeApiListing,
   AppDataContext, useAppData, OlaMap,
   Icon, Logo, Img, LockedAddress, ListingCard, Modal,
-  PortalShell, StatCard, StatusBadge, DashHeader,
+  PortalShell, StatCard, StatusBadge, DashHeader, Footer,
 } from '../_shared';
-import { BROKER_NAV } from './client-broker';
+import { BROKER_NAV, CLIENT_NAV } from './client-broker';
+import { Field } from './owner';
 
 function BrokerPortfolioPage({nav}) {
   const { authUser } = useAppData();

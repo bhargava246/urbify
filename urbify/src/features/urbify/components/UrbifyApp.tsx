@@ -9,12 +9,12 @@ import React, { useState, useEffect } from 'react';
 // ── Shared infrastructure ────────────────────────────────────────────────────
 import {
   LISTINGS, AppDataContext,
-  normalizeApiListing, Icon, Logo,
+  normalizeApiListing, Icon, Logo, Footer,
 } from '../_shared';
 import { useTweaks } from '../_tweaks';
 
 // ── Page components ──────────────────────────────────────────────────────────
-import { HomePage, Footer }                              from '../pages/home';
+import { HomePage }                              from '../pages/home';
 import { SearchPage }                                    from '../pages/search';
 import { DetailPage }                                    from '../pages/detail';
 import { UnlockPage }                                    from '../pages/unlock';

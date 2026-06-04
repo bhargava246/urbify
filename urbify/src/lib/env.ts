@@ -54,4 +54,4 @@ export const env = validateEnv();
 // Typed convenience accessors
 export const APP_URL = env.NEXT_PUBLIC_APP_URL;
 export const API_URL = env.NEXT_PUBLIC_API_URL;
-export const OLA_MAPS_API_KEY = env.NEXT_PUBLIC_OLA_MAPS_API_KEY;
+export const OLA_MAPS_API_KEY = process.env.NEXT_PUBLIC_OLA_MAPS_API_KEY ?? '';

@@ -1,0 +1,16 @@
+# ─────────────────────────────────────────────────────────────
+# Urbify Frontend – Environment Variables
+# Copy to .env.local and fill in your values
+# ─────────────────────────────────────────────────────────────
+
+# Public app URL (used for metadata, canonical links, OG tags)
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# NestJS backend base URL (without /api/v1 suffix)
+# In production set this to your backend domain, e.g. https://api.urbify.in
+# In development leave blank — Next.js rewrites proxy /api/v1/* to localhost:3001
+NEXT_PUBLIC_API_URL=http://localhost:3001
+
+# Ola Maps API key — get one free at https://maps.olakrutrim.com
+# Used for: interactive map, GPS reverse geocoding, locality autocomplete
+NEXT_PUBLIC_OLA_MAPS_API_KEY=your_ola_maps_api_key_here

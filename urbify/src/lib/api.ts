@@ -3,10 +3,14 @@
  * Handles: base URL, auth headers, access-token refresh, error shaping
  */
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL
-    ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1`
-    : 'http://localhost:3001/api/v1';
+const getApiBase = () => {
+  if (typeof window !== 'undefined') {
+    return '/api/v1';
+  }
+  return 'http://localhost:3001/api/v1';
+};
+
+const API_BASE = getApiBase();
 
 // ─── Token storage (browser-safe) ────────────────────────────────────────────
 

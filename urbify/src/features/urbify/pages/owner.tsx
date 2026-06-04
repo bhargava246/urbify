@@ -29,9 +29,9 @@ function OwnerDashPage({nav}) {
   const [myListings, setMyListings] = useState([]);
   const [loadingListings, setLoadingListings] = useState(true);
 
-  useEffect(() => {
+  const loadListings = useCallback(() => {
     const token = localStorage.getItem('urb_access');
-    if (!token) return;
+    if (!token) { setLoadingListings(false); return; }
     fetch('/api/v1/properties/my/listings', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : [])
       .then(data => {
@@ -46,6 +46,41 @@ function OwnerDashPage({nav}) {
       .catch(() => {})
       .finally(() => setLoadingListings(false));
   }, []);
+
+  useEffect(() => {
+    loadListings();
+  }, [loadListings]);
+
+  const handleTogglePause = async (id, currentStatus) => {
+    const token = localStorage.getItem('urb_access');
+    if (!token) return;
+    const nextStatus = currentStatus === 'paused' ? 'ACTIVE' : 'PAUSED';
+    try {
+      const res = await fetch(`/api/v1/properties/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      if (res.ok) {
+        loadListings();
+      }
+    } catch(e) { console.error(e); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm("Are you sure you want to delete this listing?")) return;
+    const token = localStorage.getItem('urb_access');
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/v1/properties/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        loadListings();
+      }
+    } catch(e) { console.error(e); }
+  };
 
   const userName = authUser?.ownerProfile?.fullName || authUser?.brokerProfile?.fullName || 'there';
   const firstName = userName.split(' ')[0];
@@ -133,7 +168,8 @@ function OwnerDashPage({nav}) {
                 <td style={{padding:'14px 22px', textAlign:'right'}}>
                   <div style={{display:'inline-flex', gap:4}}>
                     <button className="btn btn-ghost btn-sm" onClick={()=>nav('detail', l.id)}>View</button>
-                    <button className="btn btn-outline btn-sm">Edit</button>
+                    <button className="btn btn-outline btn-sm" onClick={() => handleTogglePause(l.id, l.status)}>{l.status === 'paused' ? 'Resume' : 'Pause'}</button>
+                    <button className="btn btn-outline btn-sm" style={{color:'var(--danger)', borderColor:'var(--danger)'}} onClick={() => handleDelete(l.id)}>Delete</button>
                   </div>
                 </td>
               </tr>
@@ -181,7 +217,7 @@ function OwnerListPage({nav}) {
   const [myListings, setMyListings] = useState([]);
   const [loadingList, setLoadingList] = useState(true);
 
-  useEffect(() => {
+  const loadListings = useCallback(() => {
     const token = localStorage.getItem('urb_access');
     if (!token) { setLoadingList(false); return; }
     fetch('/api/v1/properties/my/listings', { headers: { Authorization: `Bearer ${token}` } })
@@ -198,6 +234,41 @@ function OwnerListPage({nav}) {
       .catch(() => {})
       .finally(() => setLoadingList(false));
   }, []);
+
+  useEffect(() => {
+    loadListings();
+  }, [loadListings]);
+
+  const handleTogglePause = async (id, currentStatus) => {
+    const token = localStorage.getItem('urb_access');
+    if (!token) return;
+    const nextStatus = currentStatus === 'paused' ? 'ACTIVE' : 'PAUSED';
+    try {
+      const res = await fetch(`/api/v1/properties/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      if (res.ok) {
+        loadListings();
+      }
+    } catch(e) { console.error(e); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm("Are you sure you want to delete this listing?")) return;
+    const token = localStorage.getItem('urb_access');
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/v1/properties/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        loadListings();
+      }
+    } catch(e) { console.error(e); }
+  };
 
   const firstName = authUser?.ownerProfile?.fullName?.split(' ')[0] || authUser?.brokerProfile?.fullName?.split(' ')[0] || '';
   const portalUser = authUser ? {
@@ -231,9 +302,8 @@ function OwnerListPage({nav}) {
               </div>
 
               <div style={{display:'flex', gap:6, marginTop:14}}>
-                <button className="btn btn-outline btn-sm" style={{flex:1}}>Edit</button>
-                <button className="btn btn-outline btn-sm" style={{flex:1}}>Pause</button>
-                <button className="btn btn-ghost btn-sm">⋯</button>
+                <button className="btn btn-outline btn-sm" onClick={() => handleTogglePause(l.id, l.status)} style={{flex:1}}>{l.status === 'paused' ? 'Resume' : 'Pause'}</button>
+                <button className="btn btn-outline btn-sm" onClick={() => handleDelete(l.id)} style={{flex:1, color:'var(--danger)', borderColor:'var(--danger)'}}>Delete</button>
               </div>
             </div>
           </div>
@@ -881,7 +951,7 @@ function StepReview({formData, onNext, onBack, submitting}) {
   );
 }
 
-function Field({label, children, style}) {
+export function Field({label, children, style}: any) {
   return (
     <div style={style}>
       <label style={{fontSize:12, color:'var(--text-muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.08em', display:'block', marginBottom:8}}>{label}</label>

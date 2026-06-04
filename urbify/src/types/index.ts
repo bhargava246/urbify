@@ -158,7 +158,7 @@ export interface CityStats {
 
 export interface CreateOrderResponse {
   orderId:          string;
-  razorpayOrderId:  string;
+  razorpayOrderId?:  string;
   razorpayKeyId?:   string;
   amount:           number;
   currency:         string;
@@ -166,6 +166,8 @@ export interface CreateOrderResponse {
   unlockId?:        string;
   unlockFee:        number;
   gst:              number;
+  redirectUrl?:     string;
+  merchantTransactionId?: string;
 }
 
 export interface UnlockResult {

@@ -69,7 +69,7 @@ export function OlaMap({
 
       const olaMaps = new OlaMaps({ apiKey });
 
-      const map = olaMaps.init({
+      const map = await olaMaps.init({
         style: `${STYLE_URL}?api_key=${apiKey}`,
         container: containerRef.current,
         center,

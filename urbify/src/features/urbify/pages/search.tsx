@@ -8,9 +8,9 @@ import {
   furnishingLabel, facingLabel, ageLabel, postedLabel, normalizeApiListing,
   AppDataContext, useAppData, OlaMap,
   Icon, Logo, Img, LockedAddress, ListingCard, Modal,
-  PortalShell, StatCard, StatusBadge, DashHeader,
+  PortalShell, StatCard, StatusBadge, DashHeader, Footer,
 } from '../_shared';
-import { LocationAutocomplete, Footer } from './home';
+import { LocationAutocomplete } from './home';
 
 function SearchPage({nav, savedIds, onSave, onUnlock, initialSearchParams}) {
   const [bhkSel, setBhkSel] = useState(() => {

@@ -8,7 +8,7 @@ import {
   furnishingLabel, facingLabel, ageLabel, postedLabel, normalizeApiListing,
   AppDataContext, useAppData, OlaMap,
   Icon, Logo, Img, LockedAddress, ListingCard, Modal,
-  PortalShell, StatCard, StatusBadge, DashHeader,
+  PortalShell, StatCard, StatusBadge, DashHeader, Footer, Faq, MiniMap,
 } from '../_shared';
 
 function CityPage({nav, savedIds, onSave, onUnlock}) {
@@ -207,6 +207,7 @@ function Tile({label, value, tone}) {
 
 // ─── LOCALITY LANDING ─────────────────────────────────────────────────────
 function LocalityPage({nav, savedIds, onSave, onUnlock}) {
+  const { listings } = useAppData();
   const loc = "Koramangala";
   const city = "Bangalore";
 

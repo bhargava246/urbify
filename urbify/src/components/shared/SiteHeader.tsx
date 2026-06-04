@@ -60,6 +60,7 @@ export function SiteHeader() {
   const initials = dName.split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase();
 
   const dashLink = role === 'OWNER' ? '/owner/dashboard' : role === 'BROKER' ? '/broker/dashboard' : role === 'ADMIN' ? '/admin' : '/dashboard';
+  const dashLabel = role === 'OWNER' ? 'Owner Dashboard' : role === 'BROKER' ? 'Broker Dashboard' : role === 'ADMIN' ? 'Admin Panel' : 'My Dashboard';
 
   const isPortal = pathname?.startsWith('/dashboard') || pathname?.startsWith('/owner') || pathname?.startsWith('/broker') || pathname?.startsWith('/admin');
 
@@ -83,7 +84,7 @@ export function SiteHeader() {
       <div style={{display:'flex', alignItems:'center', gap:12}}>
         {user ? (
           <>
-            <Link href={dashLink} style={{fontSize:13, color:'var(--text-muted)', textDecoration:'none', fontWeight:500}}>My Dashboard</Link>
+            <Link href={dashLink} style={{fontSize:13, color:'var(--text-muted)', textDecoration:'none', fontWeight:500}}>{dashLabel}</Link>
             <div style={{position:'relative'}} ref={menuRef}>
               <button onClick={()=>setMenuOpen(o=>!o)} style={{
                 width:36, height:36, borderRadius:'50%', background:'var(--brand-500)', color:'#fff',
@@ -96,7 +97,7 @@ export function SiteHeader() {
                 }}>
                   <div style={{padding:'10px 16px 6px', fontSize:12, color:'var(--text-muted)'}}>Signed in as</div>
                   <div style={{padding:'0 16px 10px', fontSize:13, fontWeight:600, borderBottom:'1px solid var(--border)'}}>{dName}</div>
-                  <a style={{display:'block',padding:'10px 16px',fontSize:13,cursor:'pointer',textDecoration:'none',color:'var(--text)'}} href={dashLink}>My dashboard</a>
+                  <a style={{display:'block',padding:'10px 16px',fontSize:13,cursor:'pointer',textDecoration:'none',color:'var(--text)'}} href={dashLink}>{dashLabel}</a>
                   <a style={{display:'block',padding:'10px 16px',fontSize:13,cursor:'pointer',textDecoration:'none',color:'var(--text)'}} href="/notifications">Notifications</a>
                   <a style={{display:'block',padding:'10px 16px',fontSize:13,cursor:'pointer',textDecoration:'none',color:'var(--text)'}} href="/settings">Settings</a>
                   <div style={{height:1,background:'var(--border)',margin:'4px 0'}}/>

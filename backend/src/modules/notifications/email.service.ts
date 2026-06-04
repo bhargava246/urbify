@@ -38,6 +38,7 @@ export class EmailService {
       subject,
       html,
     });
+    this.logger.log(`[DEVELOPMENT/TEST] OTP for ${to} is ${otp}`);
     this.logger.log(`OTP email sent to ${to}`);
   }
 
