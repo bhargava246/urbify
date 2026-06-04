@@ -24,7 +24,7 @@ import { OwnerDashPage, OwnerListPage,
          OwnerInquiriesPage, OwnerNewPage }              from '../pages/owner';
 import { ClientDashPage, BrokerDashPage,
          ClientShortlistPage,
-         ClientSearchesPage }                            from '../pages/client-broker';
+         ClientSearchesPage, BROKER_NAV }               from '../pages/client-broker';
 import { AdminDashPage, AdminModPage, AdminUsersPage,
          AdminRevenuePage, AdminCmsPage }                from '../pages/admin';
 import { AboutPage, FaqPage, ContactPage }               from '../pages/info';
@@ -183,10 +183,10 @@ export function UrbifyApp({ initialPage = 'home' }) {
 
   // ── Navigation — URL-based for cross-page, state-based for intra-page ───────
   const PAGE_URLS: Record<string, string> = {
-    home: '/', search: '/rent', rent: '/rent',
+    home: '/', search: '/rent', rent: '/rent', buy: '/buy',
     auth: '/auth', how: '/how-it-works', pricing: '/pricing',
     ownerDash: '/owner/dashboard', brokerDash: '/broker/dashboard',
-    clientDash: '/dashboard',
+    clientDash: '/dashboard', adminDash: '/admin',
     settings: '/settings', notifications: '/notifications',
   };
 
@@ -305,7 +305,7 @@ export function UrbifyApp({ initialPage = 'home' }) {
         {/* Broker */}
         {page==='brokerDash'       && <BrokerDashPage      {...port}/>}
         {page==='brokerList'       && <BrokerPortfolioPage {...port}/>}
-        {page==='brokerInq'        && <OwnerInquiriesPage  {...port}/>}
+        {page==='brokerInq'        && <OwnerInquiriesPage  {...port} navItems={BROKER_NAV()} navCurrent="brokerInq" roleLabel="Verified Broker"/>}
         {page==='brokerCommission' && <AdminRevenuePage    {...port}/>}
         {/* Admin */}
         {page==='adminDash'  && <AdminDashPage    {...port}/>}

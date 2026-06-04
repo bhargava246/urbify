@@ -342,7 +342,6 @@ function HomePage({nav, savedIds, onSave, onUnlock}) {
         </div>
       </section>
 
-      <Footer nav={nav}/>
     </div>
   );
 }

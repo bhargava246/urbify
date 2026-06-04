@@ -51,6 +51,14 @@ function AuthPage({nav}) {
   const role = tab === "owner" ? "OWNER" : tab === "broker" ? "BROKER" : "CLIENT";
 
   // ── Login ──────────────────────────────────────────────────────────────────
+  const dashFor = (userObj) => {
+    const r = userObj?.role;
+    if (r === 'OWNER')  return '/owner/dashboard';
+    if (r === 'BROKER') return '/broker/dashboard';
+    if (r === 'ADMIN')  return '/admin';
+    return '/dashboard'; // CLIENT
+  };
+
   const handleLogin = async () => {
     setError(""); setLoading(true);
     try {
@@ -62,10 +70,14 @@ function AuthPage({nav}) {
       if (!res.ok) throw new Error(data.message || 'Invalid credentials');
       if (data.accessToken)  localStorage.setItem('urb_access',  data.accessToken);
       if (data.refreshToken) localStorage.setItem('urb_refresh', data.refreshToken);
-      if (data.user) localStorage.setItem('urb_user', JSON.stringify(data.user));
-      else { const me = await fetch('/api/v1/users/me', { headers: { Authorization: `Bearer ${data.accessToken}` } }); if (me.ok) localStorage.setItem('urb_user', JSON.stringify(await me.json())); }
+      let userObj = data.user || null;
+      if (!userObj) {
+        const me = await fetch('/api/v1/users/me', { headers: { Authorization: `Bearer ${data.accessToken}` } });
+        if (me.ok) { userObj = await me.json(); }
+      }
+      if (userObj) localStorage.setItem('urb_user', JSON.stringify(userObj));
       window.dispatchEvent(new Event('urbify:auth'));
-      window.location.href = '/';
+      window.location.href = dashFor(userObj);
     } catch(err) { setError(err.message); }
     finally { setLoading(false); }
   };
@@ -85,10 +97,14 @@ function AuthPage({nav}) {
       if (!res.ok) throw new Error(data.message || 'Registration failed');
       if (data.accessToken)  localStorage.setItem('urb_access',  data.accessToken);
       if (data.refreshToken) localStorage.setItem('urb_refresh', data.refreshToken);
-      if (data.user) localStorage.setItem('urb_user', JSON.stringify(data.user));
-      else { const me = await fetch('/api/v1/users/me', { headers: { Authorization: `Bearer ${data.accessToken}` } }); if (me.ok) localStorage.setItem('urb_user', JSON.stringify(await me.json())); }
+      let userObj = data.user || null;
+      if (!userObj) {
+        const me = await fetch('/api/v1/users/me', { headers: { Authorization: `Bearer ${data.accessToken}` } });
+        if (me.ok) { userObj = await me.json(); }
+      }
+      if (userObj) localStorage.setItem('urb_user', JSON.stringify(userObj));
       window.dispatchEvent(new Event('urbify:auth'));
-      window.location.href = '/';
+      window.location.href = dashFor(userObj);
     } catch(err) { setError(err.message); }
     finally { setLoading(false); }
   };
@@ -458,7 +474,6 @@ function PricingPage({nav}) {
         </div>
       </section>
 
-      <Footer nav={nav}/>
     </div>
   );
 }

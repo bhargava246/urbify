@@ -75,7 +75,7 @@ export function SiteHeader() {
 
       <nav style={{display:'flex', alignItems:'center', gap:24}}>
         <Link href="/rent"         style={navStyle(pathname==='/rent')}>Rent</Link>
-        <Link href="/rent"         style={navStyle(false)}>Buy</Link>
+        <Link href="/buy"          style={navStyle(pathname==='/buy')}>Buy</Link>
         <Link href="/how-it-works" style={navStyle(pathname==='/how-it-works')}>How it works</Link>
         <Link href="/pricing"      style={navStyle(pathname==='/pricing')}>Pricing</Link>
       </nav>

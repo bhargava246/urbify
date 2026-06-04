@@ -40,6 +40,26 @@ const ADMIN_NAV = () => [
 // ─── Admin Dashboard ──────────────────────────────────────────────────────
 function AdminDashPage({nav}) {
   const adminUser = useAdminUser();
+  const [stats, setStats] = useState({ listings: 0, pending: 0, users: 0, revenue: 0 });
+
+  useEffect(() => {
+    const token = localStorage.getItem('urb_access');
+    if (!token) return;
+    const h = { Authorization: `Bearer ${token}` };
+    Promise.allSettled([
+      fetch('/api/v1/properties/admin/all?limit=1', { headers: h }).then(r => r.ok ? r.json() : null),
+      fetch('/api/v1/properties/admin/all?status=PENDING_REVIEW&limit=1', { headers: h }).then(r => r.ok ? r.json() : null),
+      fetch('/api/v1/users?limit=1', { headers: h }).then(r => r.ok ? r.json() : null),
+    ]).then(([listings, pending, users]) => {
+      setStats({
+        listings: listings.value?.total ?? 0,
+        pending:  pending.value?.total  ?? 0,
+        users:    users.value?.total    ?? 0,
+        revenue: 0,
+      });
+    });
+  }, []);
+
   return (
     <PortalShell user={adminUser} navItems={ADMIN_NAV()} current="adminDash" onNav={(id)=>nav(id)}>
       <DashHeader title="Platform overview"
@@ -62,10 +82,10 @@ function AdminDashPage({nav}) {
 
       {/* primary KPIs */}
       <div style={{display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:14, marginBottom:24}}>
-        <StatCard label="Revenue (30d)" value="₹48.2L" trend="+18.6%" sub="vs prev period"/>
-        <StatCard label="Unlocks" value="1,284" trend="+22%" sub="paid contact reveals"/>
-        <StatCard label="Active listings" value="12,402" trend="+412" sub="net add"/>
-        <StatCard label="New signups" value="3,841" trend="+8.2%" sub="across roles"/>
+        <StatCard label="Revenue (30d)" value="₹—" sub="PhonePe data pending"/>
+        <StatCard label="Pending review" value={String(stats.pending)} sub="listings in queue" color={stats.pending > 0 ? 'var(--warning)' : undefined}/>
+        <StatCard label="Total listings" value={stats.listings.toLocaleString('en-IN')} sub="all time"/>
+        <StatCard label="Total users" value={stats.users.toLocaleString('en-IN')} sub="across all roles"/>
       </div>
 
       {/* charts */}
@@ -151,7 +171,7 @@ function AdminDashPage({nav}) {
 
         <div className="card" style={{padding:22}}>
           <div style={{fontSize:11, color:'var(--text-muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.08em'}}>Moderation queue</div>
-          <div className="font-display" style={{fontSize:48, fontWeight:800, letterSpacing:'-0.04em', marginTop:8}}>14</div>
+          <div className="font-display" style={{fontSize:48, fontWeight:800, letterSpacing:'-0.04em', marginTop:8}}>{stats.pending}</div>
           <div style={{fontSize:12, color:'var(--text-muted)'}}>listings awaiting review</div>
           <div style={{display:'flex', gap:6, marginTop:14, fontSize:11}}>
             <span className="chip chip-accent">2 flagged</span>
@@ -212,27 +232,44 @@ function Legend({color, label, value}) {
 function AdminModPage({nav}) {
   const adminUser = useAdminUser();
   const [activeIdx, setActiveIdx] = useState(0);
-  const queue = LISTINGS.slice(0, 6).map((l, i) => ({
-    ...l,
-    submittedBy: ["Vikram K. (Broker)","Anita R.","Rohit M.","Priya S.","Karan T. (Broker)","Manish J."][i],
-    submitted: ["12 min ago","34 min ago","1 h ago","1.5 h ago","2 h ago","3 h ago"][i],
-    sla: ["1h 48m","1h 26m","1h 00m","30 min","-12 min","-1h 12m"][i],
-    overdue: i >= 4,
-    flags: [
-      [], 
-      [{type:'AI', label:'Quality 7/10'}], 
-      [], 
-      [{type:'AI', label:'Possible duplicate'}], 
-      [{type:'AI', label:'Photo dark'}, {type:'AI', label:'Quality 4/10'}], 
-      [{type:'User', label:'Reported by 3 users'}]
-    ][i],
-  }));
+  const [queue, setQueue] = useState([]);
+  const [loadingQueue, setLoadingQueue] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem('urb_access');
+    if (!token) { setLoadingQueue(false); return; }
+    fetch('/api/v1/properties/admin/all?status=PENDING_REVIEW&limit=50', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        const items = (Array.isArray(data) ? data : (data?.data || [])).map(l => ({
+          ...normalizeApiListing(l),
+          submittedBy: l.isBrokerListing ? 'Broker listing' : 'Direct owner',
+          submitted: new Date(l.createdAt).toLocaleString('en-IN', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }),
+          sla: (() => {
+            const mins = Math.round((Date.now() - new Date(l.createdAt)) / 60000);
+            const left = 120 - mins;
+            if (left < 0) return `-${Math.abs(left)}m`;
+            return `${left}m left`;
+          })(),
+          overdue: (Date.now() - new Date(l.createdAt)) > 2 * 60 * 60 * 1000,
+          flags: l.moderationNote ? [{ type: 'Note', label: l.moderationNote }] : [],
+          photos: l.photos?.map(p => p.s3Url) || [],
+        }));
+        setQueue(items);
+        setActiveIdx(0);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingQueue(false));
+  }, []);
+
   const active = queue[activeIdx];
 
   return (
     <PortalShell user={adminUser} navItems={ADMIN_NAV()} current="adminMod" onNav={(id)=>nav(id)}>
       <DashHeader title="Moderation queue"
-        subtitle={`${queue.length} listings · SLA target < 2h · ${queue.filter(q=>q.overdue).length} overdue`}
+        subtitle={loadingQueue ? 'Loading…' : `${queue.length} listings · SLA target < 2h · ${queue.filter(q=>q.overdue).length} overdue`}
         actions={
           <>
             <select className="input select btn-sm" style={{height:34, fontSize:13}}><option>All flags</option><option>AI flagged</option><option>User reported</option></select>
@@ -240,7 +277,16 @@ function AdminModPage({nav}) {
           </>
         }/>
 
-      <div style={{display:'grid', gridTemplateColumns:'380px 1fr', gap:16, alignItems:'start'}}>
+      {loadingQueue && <div style={{padding:'40px', textAlign:'center', color:'var(--text-muted)'}}>Loading queue…</div>}
+      {!loadingQueue && queue.length === 0 && (
+        <div className="card" style={{padding:'48px', textAlign:'center'}}>
+          <div style={{fontSize:32, marginBottom:12}}>✓</div>
+          <div style={{fontWeight:600, fontSize:16}}>Queue is clear</div>
+          <p style={{color:'var(--text-muted)', marginTop:8}}>No listings pending review right now.</p>
+        </div>
+      )}
+
+      {!loadingQueue && queue.length > 0 && <div style={{display:'grid', gridTemplateColumns:'380px 1fr', gap:16, alignItems:'start'}}>
         {/* Queue list */}
         <div className="card" style={{padding:0, overflow:'hidden', position:'sticky', top:96, maxHeight:'calc(100vh - 120px)', overflowY:'auto'}}>
           {queue.map((q, i)=>(
@@ -277,8 +323,20 @@ function AdminModPage({nav}) {
             </div>
             <div style={{display:'flex', gap:8}}>
               <button className="btn btn-outline btn-sm">Request changes</button>
-              <button className="btn btn-sm" style={{background:'var(--error)', color:'#fff', border:0}}>Reject</button>
-              <button className="btn btn-sm" style={{background:'var(--success)', color:'#fff', border:0}}>Approve</button>
+              <button className="btn btn-sm" style={{background:'var(--error)', color:'#fff', border:0}} onClick={async () => {
+                const token = localStorage.getItem('urb_access');
+                if (!token) return;
+                await fetch(`/api/v1/properties/admin/${active.id}/moderate`, { method:'PATCH', headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`}, body:JSON.stringify({status:'REJECTED', note:'Rejected by admin'}) });
+                setQueue(q => q.filter((_,i)=>i!==activeIdx));
+                setActiveIdx(0);
+              }}>Reject</button>
+              <button className="btn btn-sm" style={{background:'var(--success)', color:'#fff', border:0}} onClick={async () => {
+                const token = localStorage.getItem('urb_access');
+                if (!token) return;
+                await fetch(`/api/v1/properties/admin/${active.id}/moderate`, { method:'PATCH', headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`}, body:JSON.stringify({status:'ACTIVE'}) });
+                setQueue(q => q.filter((_,i)=>i!==activeIdx));
+                setActiveIdx(0);
+              }}>Approve</button>
             </div>
           </div>
 
@@ -329,7 +387,7 @@ function AdminModPage({nav}) {
             </div>
           </div>
         </div>
-      </div>
+      </div>}
     </PortalShell>
   );
 }
@@ -341,24 +399,46 @@ function AdminModPage({nav}) {
 function AdminUsersPage({nav}) {
   const adminUser = useAdminUser();
   const [filter, setFilter] = useState("all");
+  const [users, setUsers] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
 
-  const users = [
-    { initials:"VK", name:"Vikram Kumar", phone:"+91 98450•••12", role:"broker", joined:"Mar 2024", listings:24, unlocks:142, status:"verified", rera:"KA/RERA/AGT/1234", color:'var(--brand-500)' },
-    { initials:"AS", name:"Aanya Sharma", phone:"+91 98217•••42", role:"tenant", joined:"Nov 2025", listings:0, unlocks:8, status:"verified", color:'var(--accent-500)' },
-    { initials:"RP", name:"Rohan Pillai", phone:"+91 98455•••18", role:"owner", joined:"Jan 2025", listings:3, unlocks:42, status:"verified", color:'#7C3AED' },
-    { initials:"MJ", name:"Manish J.", phone:"+91 81234•••00", role:"owner", joined:"May 2026", listings:1, unlocks:0, status:"pending", color:'#10B981' },
-    { initials:"PS", name:"Priya Singh", phone:"+91 90000•••72", role:"tenant", joined:"Apr 2026", listings:0, unlocks:0, status:"verified", color:'#EF4444' },
-    { initials:"KT", name:"Karan T.", phone:"+91 78900•••11", role:"broker", joined:"Feb 2025", listings:18, unlocks:96, status:"flagged", rera:"MH/RERA/AGT/5142", color:'#0EA5E9' },
-    { initials:"DN", name:"Dhruv Nair", phone:"+91 87543•••28", role:"owner", joined:"Jul 2025", listings:5, unlocks:31, status:"verified", color:'#F59E0B' },
-    { initials:"AK", name:"Aditi Joshi", phone:"+91 99860•••11", role:"broker", joined:"May 2026", listings:0, unlocks:0, status:"pending", rera:"MH-4521 (verifying)", color:'#06B6D4' },
-  ];
+  useEffect(() => {
+    const token = localStorage.getItem('urb_access');
+    if (!token) { setLoadingUsers(false); return; }
+    const roleParam = filter !== 'all' ? `&role=${filter.toUpperCase()}` : '';
+    fetch(`/api/v1/users?limit=50&page=1${roleParam}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        const items = Array.isArray(data) ? data : (data?.data || []);
+        const total = data?.total ?? items.length;
+        setTotalCount(total);
+        const colorMap = { OWNER:'#7C3AED', CLIENT:'var(--accent-500)', BROKER:'var(--brand-500)', ADMIN:'#EF4444' };
+        setUsers(items.map(u => {
+          const name = u.ownerProfile?.fullName || u.brokerProfile?.fullName || u.clientProfile?.fullName || u.email || 'User';
+          return {
+            initials: name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(),
+            name, email: u.email,
+            role: u.role?.toLowerCase() === 'client' ? 'tenant' : u.role?.toLowerCase(),
+            joined: new Date(u.createdAt).toLocaleDateString('en-IN', { month:'short', year:'numeric' }),
+            listings: 0, unlocks: 0,
+            status: u.isBanned ? 'flagged' : u.isVerified ? 'verified' : 'pending',
+            rera: u.brokerProfile?.reraId,
+            color: colorMap[u.role] || 'var(--text-muted)',
+            id: u.id,
+          };
+        }));
+      })
+      .catch(() => {})
+      .finally(() => setLoadingUsers(false));
+  }, [filter]);
 
-  const filtered = filter === "all" ? users : users.filter(u=>u.role === filter);
+  const filtered = users;
 
   return (
     <PortalShell user={adminUser} navItems={ADMIN_NAV()} current="adminUsers" onNav={(id)=>nav(id)}>
       <DashHeader title="Users"
-        subtitle={`${users.length.toLocaleString()} active accounts · ${users.filter(u=>u.status==='pending').length} pending verification`}
+        subtitle={loadingUsers ? 'Loading…' : `${totalCount.toLocaleString()} accounts · ${users.filter(u=>u.status==='pending').length} pending verification`}
         actions={
           <>
             <button className="btn btn-outline btn-sm">Export CSV</button>
@@ -370,10 +450,10 @@ function AdminUsersPage({nav}) {
       <div className="card" style={{padding:'16px 20px', display:'flex', alignItems:'center', gap:14, marginBottom:18}}>
         <div style={{display:'flex', gap:6}}>
           {[
-            {id:'all', l:`All · 28,402`},
-            {id:'owner', l:'Owners · 12,840'},
-            {id:'tenant', l:'Tenants · 14,182'},
-            {id:'broker', l:'Brokers · 1,380'},
+            {id:'all',    l:`All · ${totalCount}`},
+            {id:'owner',  l:`Owners`},
+            {id:'client', l:`Tenants`},
+            {id:'broker', l:`Brokers`},
           ].map(t=>(
             <button key={t.id} onClick={()=>setFilter(t.id)}
               style={{
@@ -445,7 +525,7 @@ function AdminUsersPage({nav}) {
         </table>
 
         <div style={{padding:'14px 22px', borderTop:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:12, color:'var(--text-muted)'}}>
-          <span>Showing 1-{filtered.length} of {filter === 'all' ? '28,402' : '~'}</span>
+          <span>{loadingUsers ? 'Loading…' : `Showing 1–${filtered.length} of ${totalCount}`}</span>
           <div style={{display:'flex', gap:6}}>
             <button className="btn btn-outline btn-sm">← Prev</button>
             <button className="btn btn-outline btn-sm">Next →</button>

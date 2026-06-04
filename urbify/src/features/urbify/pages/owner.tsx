@@ -244,21 +244,25 @@ function OwnerListPage({nav}) {
 }
 
 // ─── Owner Inquiries ──────────────────────────────────────────────────────
-function OwnerInquiriesPage({nav}) {
+function OwnerInquiriesPage({nav, navItems: navItemsProp = null, navCurrent = 'ownerInquiries', roleLabel = 'Direct Owner'}) {
   const { authUser } = useAppData();
   const _ownerName = authUser?.ownerProfile?.fullName || authUser?.brokerProfile?.fullName || 'Owner';
   const _ownerInitials = _ownerName.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-  const portalUser = { initials: _ownerInitials, name: _ownerName, role: 'Direct Owner', color: 'var(--brand-500)' };
+  const portalUser = { initials: _ownerInitials, name: _ownerName, role: roleLabel, color: 'var(--brand-500)' };
+  const navItems = navItemsProp || OWNER_NAV();
 
   const [inquiries, setInquiries] = useState([]);
   const [loadingInquiries, setLoadingInquiries] = useState(true);
 
   useEffect(() => {
     setLoadingInquiries(true);
-    fetch('/api/v1/payments/revenue')
+    const token = localStorage.getItem('urb_access');
+    if (!token) { setLoadingInquiries(false); return; }
+    fetch('/api/v1/properties/my/unlocks', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data && Array.isArray(data.items)) setInquiries(data.items);
+        else if (Array.isArray(data)) setInquiries(data);
         else setInquiries([]);
       })
       .catch(() => setInquiries([]))
@@ -267,7 +271,7 @@ function OwnerInquiriesPage({nav}) {
 
   const items = inquiries;
   return (
-    <PortalShell user={portalUser} navItems={OWNER_NAV()} current="ownerInquiries" onNav={(id)=>nav(id)}>
+    <PortalShell user={portalUser} navItems={navItems} current={navCurrent} onNav={(id)=>nav(id)}>
       <DashHeader title="Inquiries"
         subtitle="A feed of everything that's happened on your listings."
         actions={<button className="btn btn-outline btn-sm">Mark all read</button>}/>
@@ -310,8 +314,79 @@ function OwnerNewPage({nav}) {
   const portalUser = { initials: _ownerInitials2, name: _ownerName2, role: 'Direct Owner', color: 'var(--brand-500)' };
 
   const [step, setStep] = useState(0);
-  const [formData, setFormData] = useState({ location: {} });
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const steps = ["Type","Details","Location","Pricing","Photos","Review"];
+
+  // Shared form state — all steps read/write here
+  const [formData, setFormData] = useState({
+    listingType: 'RESIDENTIAL_RENTAL',
+    bhk: 2,
+    areaSqFt: 1200,
+    floor: null,
+    totalFloors: null,
+    furnishingStatus: 'UNFURNISHED',
+    propertyAge: 0,
+    facing: null,
+    propertySubType: 'apartment',
+    availableFrom: new Date().toISOString().slice(0,10),
+    rentOrPrice: 35000,
+    securityDeposit: 70000,
+    isNegotiable: false,
+    amenities: [],
+    location: {},
+  });
+  const patchForm = (patch) => setFormData(f => ({...f, ...patch}));
+
+  const handleSubmit = async () => {
+    setSubmitError(''); setSubmitting(true);
+    const token = localStorage.getItem('urb_access');
+    if (!token) { setSubmitError('Please sign in first'); setSubmitting(false); return; }
+
+    const loc = formData.location || {};
+    const payload = {
+      listingType:      formData.listingType,
+      locality:         loc.locality || 'Unknown',
+      city:             loc.city     || 'Bangalore',
+      state:            loc.state    || 'Karnataka',
+      pincode:          loc.pincode  || '560001',
+      fullAddress:      loc.fullAddress || loc.locality || 'Address not specified',
+      latitude:         loc.lat  || undefined,
+      longitude:        loc.lng  || undefined,
+      landmark:         loc.landmark || undefined,
+      title:            `${formData.bhk} BHK ${formData.propertySubType} for ${formData.listingType === 'RESIDENTIAL_RENTAL' ? 'Rent' : 'Sale'} in ${loc.locality || 'Bangalore'}`,
+      description:      `Spacious ${formData.bhk} BHK ${formData.propertySubType} in ${loc.locality || 'Bangalore'}. ${formData.furnishingStatus?.replace(/_/g,' ')}. Available from ${formData.availableFrom}.`,
+      propertySubType:  formData.propertySubType,
+      bhk:              formData.bhk,
+      areaSqFt:         formData.areaSqFt,
+      floor:            formData.floor || undefined,
+      totalFloors:      formData.totalFloors || undefined,
+      furnishingStatus: formData.furnishingStatus || undefined,
+      facing:           formData.facing || undefined,
+      propertyAge:      formData.propertyAge ?? undefined,
+      rentOrPrice:      formData.rentOrPrice,
+      securityDeposit:  formData.securityDeposit || undefined,
+      availableFrom:    formData.availableFrom,
+      isNegotiable:     formData.isNegotiable,
+      amenities:        formData.amenities,
+    };
+
+    try {
+      const res = await fetch('/api/v1/properties', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to create listing');
+      // listing created — navigate to dashboard
+      nav('ownerDash');
+    } catch(e) {
+      setSubmitError(e.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <PortalShell user={portalUser} navItems={OWNER_NAV()} current="ownerNew" onNav={(id)=>nav(id)}>
@@ -321,20 +396,26 @@ function OwnerNewPage({nav}) {
       {/* progress bar */}
       <div style={{display:'grid', gridTemplateColumns:`repeat(${steps.length}, 1fr)`, gap:6, marginBottom:32}}>
         {steps.map((s, i)=>(
-          <div key={s} onClick={()=>setStep(i)} style={{cursor:'pointer'}}>
+          <div key={s} onClick={()=>i < step && setStep(i)} style={{cursor: i < step ? 'pointer' : 'default'}}>
             <div style={{height:4, background: i <= step ? 'var(--text)' : 'var(--border)', borderRadius:99}}/>
             <div style={{fontSize:11, marginTop:8, fontWeight:600, color: i <= step ? 'var(--text)' : 'var(--text-muted)'}}>0{i+1} · {s}</div>
           </div>
         ))}
       </div>
 
+      {submitError && (
+        <div style={{marginBottom:16, padding:'12px 16px', background:'#fef2f2', borderRadius:'var(--r-md)', fontSize:13, color:'var(--danger)'}}>
+          {submitError}
+        </div>
+      )}
+
       <div className="card" style={{padding:36, maxWidth:880}}>
-        {step === 0 && <StepType onNext={()=>setStep(1)}/>}
-        {step === 1 && <StepDetails onNext={()=>setStep(2)} onBack={()=>setStep(0)}/>}
+        {step === 0 && <StepType formData={formData} patchForm={patchForm} onNext={()=>setStep(1)}/>}
+        {step === 1 && <StepDetails formData={formData} patchForm={patchForm} onNext={()=>setStep(2)} onBack={()=>setStep(0)}/>}
         {step === 2 && <StepLocation onNext={()=>setStep(3)} onBack={()=>setStep(1)} formData={formData} setFormData={setFormData}/>}
-        {step === 3 && <StepPricing onNext={()=>setStep(4)} onBack={()=>setStep(2)}/>}
+        {step === 3 && <StepPricing formData={formData} patchForm={patchForm} onNext={()=>setStep(4)} onBack={()=>setStep(2)}/>}
         {step === 4 && <StepPhotos onNext={()=>setStep(5)} onBack={()=>setStep(3)}/>}
-        {step === 5 && <StepReview onNext={()=>nav('ownerDash')} onBack={()=>setStep(4)}/>}
+        {step === 5 && <StepReview formData={formData} onNext={handleSubmit} onBack={()=>setStep(4)} submitting={submitting}/>}
       </div>
     </PortalShell>
   );
@@ -349,7 +430,9 @@ function WizardNav({onBack, onNext, nextLabel = "Continue"}) {
   );
 }
 
-function StepType({onNext}) {
+function StepType({formData, patchForm, onNext}) {
+  const typeMap = { 'res-rent':'RESIDENTIAL_RENTAL', 'com-rent':'COMMERCIAL_RENTAL', 'res-sale':'RESIDENTIAL_SALE', 'com-sale':'COMMERCIAL_SALE', 'land':'LAND', 'pg':'RESIDENTIAL_RENTAL' };
+  const subTypeMap = { 'res-rent':'apartment', 'com-rent':'office', 'res-sale':'apartment', 'com-sale':'office', 'land':'land', 'pg':'pg' };
   const types = [
     { id:"res-rent", title:"Residential rental", sub:"Apartment, house, villa to let", emoji:"🏠" },
     { id:"com-rent", title:"Commercial rental", sub:"Office, shop, warehouse", emoji:"🏢" },
@@ -358,7 +441,7 @@ function StepType({onNext}) {
     { id:"land",     title:"Land / plot", sub:"Sell or lease land", emoji:"🌳" },
     { id:"pg",       title:"PG / hostel", sub:"Shared accommodation", emoji:"🛏" },
   ];
-  const [sel, setSel] = useState("res-rent");
+  const sel = Object.keys(typeMap).find(k => typeMap[k] === formData.listingType && subTypeMap[k] === formData.propertySubType) || 'res-rent';
   return (
     <div>
       <h2 className="font-display" style={{fontSize:24, fontWeight:700, letterSpacing:'-0.02em', margin:'0 0 6px'}}>What are you listing?</h2>
@@ -366,7 +449,7 @@ function StepType({onNext}) {
 
       <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:12, marginTop:24}}>
         {types.map(t=>(
-          <button key={t.id} onClick={()=>setSel(t.id)} style={{
+          <button key={t.id} onClick={()=>patchForm({ listingType: typeMap[t.id], propertySubType: subTypeMap[t.id] })} style={{
             padding:'22px 18px', borderRadius:'var(--r-md)',
             border:'1.5px solid', borderColor: sel===t.id ? 'var(--text)' : 'var(--border)',
             background: sel===t.id ? 'var(--surface-sunken)' : 'transparent',
@@ -384,8 +467,7 @@ function StepType({onNext}) {
   );
 }
 
-function StepDetails({onNext, onBack}) {
-  const [bhk, setBhk] = useState(2);
+function StepDetails({formData, patchForm, onNext, onBack}) {
   return (
     <div>
       <h2 className="font-display" style={{fontSize:24, fontWeight:700, letterSpacing:'-0.02em', margin:'0 0 6px'}}>Tell us about the property</h2>
@@ -395,31 +477,43 @@ function StepDetails({onNext, onBack}) {
         <div style={{display:'flex', gap:6, marginTop:8, flexWrap:'wrap'}}>
           {[1,2,3,4,"4+"].map(n=>{
             const v = n==='4+' ? 5 : n;
-            const a = bhk === v;
-            return <button key={n} onClick={()=>setBhk(v)} style={{padding:'10px 16px', borderRadius:'var(--r-pill)', border:'1.5px solid', borderColor: a?'var(--text)':'var(--border)', background: a?'var(--text)':'transparent', color: a?'var(--bg)':'var(--text)', fontWeight:600, fontSize:13, cursor:'pointer'}}>{n} BHK</button>;
+            const a = formData.bhk === v;
+            return <button key={n} onClick={()=>patchForm({bhk:v})} style={{padding:'10px 16px', borderRadius:'var(--r-pill)', border:'1.5px solid', borderColor: a?'var(--text)':'var(--border)', background: a?'var(--text)':'transparent', color: a?'var(--bg)':'var(--text)', fontWeight:600, fontSize:13, cursor:'pointer'}}>{n} BHK</button>;
           })}
         </div>
       </div>
 
       <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginTop:24}}>
-        <Field label="Carpet area"><div style={{display:'flex', alignItems:'center', gap:6}}><input className="input" defaultValue="1240" style={{flex:1}}/><span className="muted" style={{fontSize:13}}>sq ft</span></div></Field>
+        <Field label="Carpet area">
+          <div style={{display:'flex', alignItems:'center', gap:6}}>
+            <input className="input" type="number" value={formData.areaSqFt} onChange={e=>patchForm({areaSqFt:+e.target.value||0})} style={{flex:1}}/>
+            <span className="muted" style={{fontSize:13}}>sq ft</span>
+          </div>
+        </Field>
         <Field label="Total floors / your floor">
           <div style={{display:'flex', gap:8}}>
-            <input className="input" defaultValue="4" placeholder="Floor" style={{flex:1}}/>
-            <input className="input" defaultValue="8" placeholder="Total" style={{flex:1}}/>
+            <input className="input" type="number" value={formData.floor||''} onChange={e=>patchForm({floor:+e.target.value||null})} placeholder="Floor" style={{flex:1}}/>
+            <input className="input" type="number" value={formData.totalFloors||''} onChange={e=>patchForm({totalFloors:+e.target.value||null})} placeholder="Total" style={{flex:1}}/>
           </div>
         </Field>
         <Field label="Facing">
-          <select className="input select"><option>East</option><option>West</option><option>North</option><option>South</option></select>
+          <select className="input select" value={formData.facing||''} onChange={e=>patchForm({facing:e.target.value||null})}>
+            <option value="">— Select —</option>
+            <option value="EAST">East</option><option value="WEST">West</option><option value="NORTH">North</option><option value="SOUTH">South</option>
+          </select>
         </Field>
-        <Field label="Property age">
-          <select className="input select"><option>New construction</option><option>Less than 1 year</option><option>1 – 5 years</option><option>5 – 10 years</option></select>
+        <Field label="Property age (years)">
+          <input className="input" type="number" value={formData.propertyAge??''} onChange={e=>patchForm({propertyAge:+e.target.value||0})} placeholder="0 = new construction"/>
         </Field>
         <Field label="Furnishing">
-          <select className="input select"><option>Unfurnished</option><option>Semi-furnished</option><option>Fully furnished</option></select>
+          <select className="input select" value={formData.furnishingStatus||'UNFURNISHED'} onChange={e=>patchForm({furnishingStatus:e.target.value})}>
+            <option value="UNFURNISHED">Unfurnished</option>
+            <option value="SEMI_FURNISHED">Semi-furnished</option>
+            <option value="FULLY_FURNISHED">Fully furnished</option>
+          </select>
         </Field>
         <Field label="Available from">
-          <input className="input" type="date" defaultValue="2026-01-15"/>
+          <input className="input" type="date" value={formData.availableFrom} onChange={e=>patchForm({availableFrom:e.target.value})}/>
         </Field>
       </div>
 
@@ -649,42 +743,40 @@ function StepLocation({onNext, onBack, formData, setFormData}) {
   );
 }
 
-function StepPricing({onNext, onBack}) {
-  const [rent, setRent] = useState(38000);
+function StepPricing({formData, patchForm, onNext, onBack}) {
+  const rent = formData.rentOrPrice || 0;
   const fee = Math.round((rent / 30) * 7.5 * 1.18);
   return (
     <div>
       <h2 className="font-display" style={{fontSize:24, fontWeight:700, letterSpacing:'-0.02em', margin:'0 0 6px'}}>Set your price</h2>
 
       <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginTop:20}}>
-        <Field label="Monthly rent">
+        <Field label="Monthly rent (₹)">
           <div style={{display:'flex', alignItems:'center', gap:6}}>
             <span className="muted" style={{fontSize:14, fontWeight:600}}>₹</span>
-            <input className="input" type="number" value={rent} onChange={e=>setRent(+e.target.value || 0)} style={{flex:1}}/>
+            <input className="input" type="number" value={rent} onChange={e=>patchForm({rentOrPrice:+e.target.value||0})} style={{flex:1}}/>
           </div>
         </Field>
-        <Field label="Security deposit">
+        <Field label="Security deposit (₹)">
           <div style={{display:'flex', alignItems:'center', gap:6}}>
             <span className="muted" style={{fontSize:14, fontWeight:600}}>₹</span>
-            <input className="input" defaultValue="76000" style={{flex:1}}/>
-            <span className="muted" style={{fontSize:13}}>(2 mo)</span>
+            <input className="input" type="number" value={formData.securityDeposit||''} onChange={e=>patchForm({securityDeposit:+e.target.value||0})} style={{flex:1}}/>
           </div>
-        </Field>
-        <Field label="Maintenance">
-          <select className="input select"><option>Included in rent</option><option>Charged extra</option></select>
         </Field>
         <Field label="Negotiable?">
-          <select className="input select"><option>Yes</option><option>No</option></select>
+          <select className="input select" value={formData.isNegotiable?'yes':'no'} onChange={e=>patchForm({isNegotiable:e.target.value==='yes'})}>
+            <option value="yes">Yes</option><option value="no">No</option>
+          </select>
         </Field>
       </div>
 
       <div style={{marginTop:24, padding:'18px 22px', background:'var(--surface-sunken)', borderRadius:'var(--r-md)', display:'flex', justifyContent:'space-between', alignItems:'center', gap:18}}>
         <div>
-          <div style={{fontSize:11, color:'var(--text-muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.08em'}}>Each tenant unlock earns you</div>
-          <div style={{fontSize:13, color:'var(--text-muted)', marginTop:4}}>You keep ₹{rent} rent + ₹{rent*2} deposit. We collect the platform fee from the tenant.</div>
+          <div style={{fontSize:11, color:'var(--text-muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.08em'}}>Platform fee (paid by tenant)</div>
+          <div style={{fontSize:13, color:'var(--text-muted)', marginTop:4}}>You keep ₹{rent.toLocaleString('en-IN')} rent + ₹{(formData.securityDeposit||0).toLocaleString('en-IN')} deposit.</div>
         </div>
         <div style={{textAlign:'right'}}>
-          <div style={{fontSize:11, color:'var(--text-muted)'}}>Platform fee (collected from tenant)</div>
+          <div style={{fontSize:11, color:'var(--text-muted)'}}>Tenant pays</div>
           <div className="font-display" style={{fontSize:28, fontWeight:800, letterSpacing:'-0.03em'}}>₹{fee.toLocaleString("en-IN")}</div>
         </div>
       </div>
@@ -738,25 +830,33 @@ function StepPhotos({onNext, onBack}) {
   );
 }
 
-function StepReview({onNext, onBack}) {
+function StepReview({formData, onNext, onBack, submitting}) {
+  const loc = formData.location || {};
   return (
     <div>
       <h2 className="font-display" style={{fontSize:24, fontWeight:700, letterSpacing:'-0.02em', margin:'0 0 6px'}}>Review & submit</h2>
       <p className="muted" style={{margin:'0 0 24px', fontSize:14}}>Last look before your listing goes to our moderation team. We review in &lt; 2 hours.</p>
 
       <div style={{display:'grid', gridTemplateColumns:'1.4fr 1fr', gap:18}}>
-        <div className="card" style={{padding:0, overflow:'hidden'}}>
-          <Img src={INTERIORS[0]} style={{aspectRatio:'16/9'}}/>
-          <div style={{padding:20}}>
-            <div style={{display:'flex', gap:8, marginBottom:10}}>
-              <span className="chip chip-brand">Direct Owner</span>
-              <span className="chip">Pending review</span>
-            </div>
-            <div className="font-display" style={{fontSize:20, fontWeight:800, letterSpacing:'-0.02em'}}>2 BHK Apartment · Koramangala</div>
-            <div style={{display:'flex', gap:14, fontSize:13, color:'var(--text-muted)', marginTop:8}}>
-              <span>1,240 sq ft</span>·<span>Floor 4/8</span>·<span>East-facing</span>·<span>Semi-furnished</span>
-            </div>
-            <div className="font-display" style={{fontSize:30, fontWeight:800, letterSpacing:'-0.03em', marginTop:14}}>₹38,000<span style={{fontSize:14, color:'var(--text-muted)', fontWeight:500}}>/mo</span></div>
+        <div className="card" style={{padding:20}}>
+          <div style={{display:'flex', gap:8, marginBottom:10}}>
+            <span className="chip chip-brand">Direct Owner</span>
+            <span className="chip">Pending review</span>
+          </div>
+          <div className="font-display" style={{fontSize:20, fontWeight:800, letterSpacing:'-0.02em'}}>
+            {formData.bhk} BHK · {loc.locality || 'Location not set'}
+          </div>
+          <div style={{display:'flex', gap:14, fontSize:13, color:'var(--text-muted)', marginTop:8, flexWrap:'wrap'}}>
+            {formData.areaSqFt > 0 && <span>{formData.areaSqFt.toLocaleString('en-IN')} sq ft</span>}
+            {formData.floor && <span>Floor {formData.floor}/{formData.totalFloors || '?'}</span>}
+            {formData.facing && <span>{formData.facing}</span>}
+            {formData.furnishingStatus && <span>{formData.furnishingStatus.replace(/_/g,' ')}</span>}
+          </div>
+          <div className="font-display" style={{fontSize:30, fontWeight:800, letterSpacing:'-0.03em', marginTop:14}}>
+            ₹{(formData.rentOrPrice||0).toLocaleString('en-IN')}<span style={{fontSize:14, color:'var(--text-muted)', fontWeight:500}}>/mo</span>
+          </div>
+          <div style={{fontSize:12, color:'var(--text-muted)', marginTop:6}}>
+            {loc.city && `${loc.city}, ${loc.state || ''} ${loc.pincode || ''}`}
           </div>
         </div>
 
@@ -776,7 +876,7 @@ function StepReview({onNext, onBack}) {
         </div>
       </div>
 
-      <WizardNav onBack={onBack} onNext={onNext} nextLabel="Submit for review"/>
+      <WizardNav onBack={onBack} onNext={onNext} nextLabel={submitting ? 'Submitting…' : 'Submit for review'}/>
     </div>
   );
 }

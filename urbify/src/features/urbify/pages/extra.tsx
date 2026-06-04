@@ -10,6 +10,7 @@ import {
   Icon, Logo, Img, LockedAddress, ListingCard, Modal,
   PortalShell, StatCard, StatusBadge, DashHeader,
 } from '../_shared';
+import { BROKER_NAV } from './client-broker';
 
 function BrokerPortfolioPage({nav}) {
   const { authUser } = useAppData();
@@ -21,14 +22,28 @@ function BrokerPortfolioPage({nav}) {
   const [view, setView] = useState("table"); // table | grid
   const [statusFilter, setStatusFilter] = useState("all");
   const [selected, setSelected] = useState([]);
+  const [portfolio, setPortfolio] = useState([]);
+  const [loadingPortfolio, setLoadingPortfolio] = useState(true);
 
-  const portfolio = LISTINGS.map((l, i) => ({
-    ...l,
-    status: ["live","live","pending","rented","live","expired","live","live","live","pending","live","rented","live","live","live","live","pending","rented"][i],
-    owner: ["A. Khanna","P. Iyer","R. Verma","S. Rao","M. Kapoor","D. Nair","K. Singh","T. Reddy","V. Joshi","B. Shah","G. Bhat","N. Kumar","M. Pillai","R. Iyengar","S. Patel","H. Gupta","L. Menon","J. Bose"][i],
-    commission: l.rentK * 1000,
-    daysListed: 1 + (i*3) % 28,
-  }));
+  useEffect(() => {
+    const token = localStorage.getItem('urb_access');
+    if (!token) { setLoadingPortfolio(false); return; }
+    fetch('/api/v1/properties/my/listings', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => {
+        const arr = Array.isArray(data) ? data : (data?.data || []);
+        setPortfolio(arr.map((l, i) => ({
+          ...normalizeApiListing(l),
+          status: l.status === 'ACTIVE' ? 'live' : l.status === 'PENDING_REVIEW' ? 'pending' : l.status === 'RENTED_SOLD' ? 'rented' : l.status === 'EXPIRED' ? 'expired' : 'paused',
+          owner: '—',
+          commission: Math.round((l.rentOrPrice || 0) / 30 * 7.5 * 1.18),
+          daysListed: Math.ceil((Date.now() - new Date(l.createdAt)) / 86400000),
+          unlocks: l.unlockCount || 0,
+        })));
+      })
+      .catch(() => {})
+      .finally(() => setLoadingPortfolio(false));
+  }, []);
 
   const filtered = statusFilter === "all" ? portfolio : portfolio.filter(p => p.status === statusFilter);
 
@@ -39,7 +54,7 @@ function BrokerPortfolioPage({nav}) {
   return (
     <PortalShell user={portalUser} navItems={BROKER_NAV()} current="brokerList" onNav={(id)=>nav(id)}>
       <DashHeader title="Portfolio"
-        subtitle={`${portfolio.length} listings · ${portfolio.filter(p=>p.status==='live').length} live · ${portfolio.filter(p=>p.status==='rented').length} closed this quarter`}
+        subtitle={loadingPortfolio ? 'Loading…' : `${portfolio.length} listings · ${portfolio.filter(p=>p.status==='live').length} live · ${portfolio.filter(p=>p.status==='rented').length} closed`}
         actions={
           <>
             <button className="btn btn-outline btn-sm"><Icon.download/> Export</button>
@@ -197,11 +212,20 @@ function ClientTxPage({nav}) {
 
   useEffect(() => {
     setLoadingTx(true);
-    fetch('/api/v1/users/me/unlocks')
+    const token = localStorage.getItem('urb_access');
+    if (!token) { setLoadingTx(false); return; }
+    fetch('/api/v1/users/me/unlocks', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (data && Array.isArray(data.unlocks)) setTransactions(data.unlocks);
-        else setTransactions([]);
+        // backend returns { data: [...], total, page, limit } or plain array
+        const arr = Array.isArray(data) ? data : (data?.data || []);
+        setTransactions(arr.map(u => ({
+          id: u.id,
+          listing: normalizeApiListing(u.listing || { id: u.listingId, locality:'', city:'', rentOrPrice: u.totalAmountInr }),
+          date: new Date(u.createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }),
+          amount: u.totalAmountInr || 0,
+          status: u.status === 'SUCCESS' ? 'completed' : u.status === 'REFUNDED' ? 'refunded' : 'pending',
+        })));
       })
       .catch(() => setTransactions([]))
       .finally(() => setLoadingTx(false));

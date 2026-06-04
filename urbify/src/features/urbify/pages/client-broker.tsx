@@ -371,4 +371,4 @@ function ClientSearchesPage({nav}) {
   );
 }
 
-export { ClientDashPage, BrokerDashPage, ClientShortlistPage, ClientSearchesPage };
+export { ClientDashPage, BrokerDashPage, ClientShortlistPage, ClientSearchesPage, BROKER_NAV };
