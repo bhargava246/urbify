@@ -10,6 +10,7 @@ import {
   Icon, Logo, Img, LockedAddress, ListingCard, Modal,
   PortalShell, StatCard, StatusBadge, DashHeader,
 } from '../_shared';
+import { authFetch } from '@/lib/authFetch';
 import { CLIENT_USER, CLIENT_NAV } from './client-broker';
 
 function NotificationsPage({nav}) {
@@ -33,12 +34,12 @@ function NotificationsPage({nav}) {
   });
 
   useEffect(() => {
-    const token = localStorage.getItem('urb_access');
-    if (!token) { setLoading(false); return; }
-    fetch('/api/v1/notifications', { headers: { Authorization: `Bearer ${token}` } })
+    if (!localStorage.getItem('urb_access')) { setLoading(false); return; }
+    authFetch('/api/v1/notifications')
       .then(r => r.ok ? r.json() : { data: [] })
-      .then(data => {
-        const arr = Array.isArray(data) ? data : (data.data || []);
+      .then(raw => {
+        const data = raw?.data ?? raw;
+        const arr = Array.isArray(data) ? data : (data?.data || []);
         if (arr.length > 0) setItems(arr.map(normalizeNotif));
       })
       .catch(() => {})
@@ -54,22 +55,16 @@ function NotificationsPage({nav}) {
 
   const markRead = async (id) => {
     setItems(prev => prev.map(i => i.id === id ? {...i, read:true} : i));
-    const token = localStorage.getItem('urb_access');
-    if (token) {
-      try {
-        await fetch(`/api/v1/notifications/${id}/read`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } });
-      } catch {}
-    }
+    try {
+      await authFetch(`/api/v1/notifications/${id}/read`, { method: 'PATCH' });
+    } catch {}
   };
 
   const markAllRead = async () => {
     setItems(prev => prev.map(i => ({...i, read:true})));
-    const token = localStorage.getItem('urb_access');
-    if (token) {
-      try {
-        await fetch('/api/v1/notifications/read-all', { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } });
-      } catch {}
-    }
+    try {
+      await authFetch('/api/v1/notifications/read-all', { method: 'PATCH' });
+    } catch {}
   };
 
   const firstName = authUser?.clientProfile?.fullName?.split(' ')[0] || authUser?.ownerProfile?.fullName?.split(' ')[0] || '';

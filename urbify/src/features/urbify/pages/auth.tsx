@@ -51,12 +51,26 @@ function AuthPage({nav}) {
   const role = tab === "owner" ? "OWNER" : tab === "broker" ? "BROKER" : "CLIENT";
 
   // ── Login ──────────────────────────────────────────────────────────────────
-  const dashFor = (userObj) => {
-    const r = userObj?.role;
+  // Backend wraps all responses: { success, data, timestamp }
+  const unwrap = (raw) => raw?.data ?? raw;
+
+  const dashFor = (u) => {
+    const r = u?.role;
     if (r === 'OWNER')  return '/owner/dashboard';
     if (r === 'BROKER') return '/broker/dashboard';
     if (r === 'ADMIN')  return '/admin';
     return '/dashboard'; // CLIENT
+  };
+
+  const finishAuth = async (tokens) => {
+    if (tokens.accessToken)  localStorage.setItem('urb_access',  tokens.accessToken);
+    if (tokens.refreshToken) localStorage.setItem('urb_refresh', tokens.refreshToken);
+    const meRes = await fetch('/api/v1/users/me', { headers: { Authorization: `Bearer ${tokens.accessToken}` } });
+    let userObj = meRes.ok ? unwrap(await meRes.json()) : null;
+    if (userObj) localStorage.setItem('urb_user', JSON.stringify(userObj));
+    window.dispatchEvent(new Event('urbify:auth'));
+    // Always return to homepage — header shows user as logged in with "My Dashboard" link
+    window.location.href = '/';
   };
 
   const handleLogin = async () => {
@@ -66,18 +80,9 @@ function AuthPage({nav}) {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ email, password }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Invalid credentials');
-      if (data.accessToken)  localStorage.setItem('urb_access',  data.accessToken);
-      if (data.refreshToken) localStorage.setItem('urb_refresh', data.refreshToken);
-      let userObj = data.user || null;
-      if (!userObj) {
-        const me = await fetch('/api/v1/users/me', { headers: { Authorization: `Bearer ${data.accessToken}` } });
-        if (me.ok) { userObj = await me.json(); }
-      }
-      if (userObj) localStorage.setItem('urb_user', JSON.stringify(userObj));
-      window.dispatchEvent(new Event('urbify:auth'));
-      window.location.href = '/';
+      const raw = await res.json();
+      if (!res.ok) throw new Error(raw.message || 'Invalid credentials');
+      await finishAuth(unwrap(raw));
     } catch(err) { setError(err.message); }
     finally { setLoading(false); }
   };
@@ -109,18 +114,9 @@ function AuthPage({nav}) {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ email, otp: otp.join('') }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Verification failed');
-      if (data.accessToken)  localStorage.setItem('urb_access',  data.accessToken);
-      if (data.refreshToken) localStorage.setItem('urb_refresh', data.refreshToken);
-      let userObj = data.user || null;
-      if (!userObj) {
-        const me = await fetch('/api/v1/users/me', { headers: { Authorization: `Bearer ${data.accessToken}` } });
-        if (me.ok) { userObj = await me.json(); }
-      }
-      if (userObj) localStorage.setItem('urb_user', JSON.stringify(userObj));
-      window.dispatchEvent(new Event('urbify:auth'));
-      window.location.href = '/';
+      const raw = await res.json();
+      if (!res.ok) throw new Error(raw.message || 'Verification failed');
+      await finishAuth(unwrap(raw));
     } catch(err) { setError(err.message); }
     finally { setLoading(false); }
   };

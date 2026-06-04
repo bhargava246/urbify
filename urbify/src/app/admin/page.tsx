@@ -1,23 +1,35 @@
 "use client";
-import { AdminDashPage } from "@/features/urbify/pages/admin";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { DashboardProvider } from "@/features/urbify/DashboardProvider";
+import { AdminDashPage, AdminModPage, AdminUsersPage, AdminRevenuePage, AdminCmsPage } from "@/features/urbify/pages/admin";
+
+const ADMIN_PAGES: Record<string, React.ComponentType<any>> = {
+  adminDash:  AdminDashPage,
+  adminMod:   AdminModPage,
+  adminUsers: AdminUsersPage,
+  adminRev:   AdminRevenuePage,
+  adminCms:   AdminCmsPage,
+};
+
+function Inner() {
+  const router = useRouter();
+  const [page, setPage] = useState("adminDash");
+
+  const nav = (p: string) => {
+    if (ADMIN_PAGES[p]) { setPage(p); return; }
+    const map: Record<string, string> = {
+      home: "/", search: "/rent", auth: "/auth",
+      settings: "/settings", notifications: "/notifications",
+      locality: "/rent", blogPost: "/blog",
+    };
+    if (map[p]) router.push(map[p]);
+  };
+
+  const Page = ADMIN_PAGES[page] || AdminDashPage;
+  return <Page nav={nav} />;
+}
 
 export default function AdminPage() {
-  const router = useRouter();
-  const nav = (p: string) => {
-    const map: Record<string, string> = {
-      home: "/",
-      search: "/rent",
-      auth: "/auth",
-      adminDash: "/admin",
-      adminMod: "/admin",
-      adminUsers: "/admin",
-      adminRev: "/admin",
-      adminCms: "/admin",
-      settings: "/settings",
-      notifications: "/notifications",
-    };
-    router.push(map[p] || "/admin");
-  };
-  return <AdminDashPage nav={nav} />;
+  return <DashboardProvider><Inner /></DashboardProvider>;
 }

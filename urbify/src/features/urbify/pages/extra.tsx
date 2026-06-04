@@ -10,6 +10,7 @@ import {
   Icon, Logo, Img, LockedAddress, ListingCard, Modal,
   PortalShell, StatCard, StatusBadge, DashHeader, Footer,
 } from '../_shared';
+import { authFetch } from '@/lib/authFetch';
 import { BROKER_NAV, CLIENT_NAV } from './client-broker';
 import { Field } from './owner';
 
@@ -29,7 +30,7 @@ function BrokerPortfolioPage({nav}) {
   useEffect(() => {
     const token = localStorage.getItem('urb_access');
     if (!token) { setLoadingPortfolio(false); return; }
-    fetch('/api/v1/properties/my/listings', { headers: { Authorization: `Bearer ${token}` } })
+    authFetch('/api/v1/properties/my/listings')
       .then(r => r.ok ? r.json() : [])
       .then(data => {
         const arr = Array.isArray(data) ? data : (data?.data || []);
@@ -215,7 +216,7 @@ function ClientTxPage({nav}) {
     setLoadingTx(true);
     const token = localStorage.getItem('urb_access');
     if (!token) { setLoadingTx(false); return; }
-    fetch('/api/v1/users/me/unlocks', { headers: { Authorization: `Bearer ${token}` } })
+    authFetch('/api/v1/users/me/unlocks')
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         // backend returns { data: [...], total, page, limit } or plain array
@@ -333,13 +334,95 @@ function ClientTxPage({nav}) {
 
 // ─── SETTINGS / PROFILE ─────────────────────────────────────────────────
 function SettingsPage({nav}) {
-  const { authUser } = useAppData();
-  const _settingsName = authUser?.clientProfile?.fullName || authUser?.ownerProfile?.fullName || authUser?.brokerProfile?.fullName || 'User';
-  const _settingsInitials = _settingsName.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-  const portalUser = { initials: _settingsInitials, name: _settingsName, role: 'Tenant', color: 'var(--accent-500)' };
+  const { authUser, refreshAuth } = useAppData();
+
+  // Derive display info from real authUser
+  const fullName  = authUser?.clientProfile?.fullName || authUser?.ownerProfile?.fullName || authUser?.brokerProfile?.fullName || '';
+  const nameParts = fullName.trim().split(' ');
+  const firstName = nameParts[0] || '';
+  const lastName  = nameParts.slice(1).join(' ') || '';
+  const roleLabel = authUser?.role === 'OWNER' ? 'Owner' : authUser?.role === 'BROKER' ? 'Broker' : authUser?.role === 'ADMIN' ? 'Admin' : 'Tenant';
+  const roleColor = authUser?.role === 'OWNER' ? 'var(--brand-500)' : authUser?.role === 'BROKER' ? 'var(--text)' : authUser?.role === 'ADMIN' ? '#7C3AED' : 'var(--accent-500)';
+  const initials  = fullName ? fullName.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() : 'U';
+  const portalUser = { initials, name: fullName || authUser?.email || 'User', role: roleLabel, color: roleColor };
 
   const [section, setSection] = useState("profile");
-  const [notif, setNotif] = useState({sms:true, email:true, push:false, weekly:true});
+  const [notif, setNotif]     = useState({sms:true, email:true, push:false, weekly:true});
+
+  // Avatar state — reads from authUser.avatarUrl or localStorage cache
+  const [avatarUrl, setAvatarUrl] = useState(() => authUser?.avatarUrl || null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState('');
+  const photoInputRef = useRef(null);
+
+  useEffect(() => { setAvatarUrl(authUser?.avatarUrl || null); }, [authUser]);
+
+  const handlePhotoSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { setPhotoError('File too large — max 2 MB'); return; }
+    setPhotoError(''); setUploadingPhoto(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await authFetch('/api/v1/uploads/image?folder=avatars', {
+        method:'POST', body:form,
+      });
+      const raw = await res.json();
+      if (!res.ok) throw new Error(raw.message || 'Upload failed');
+      const url = raw?.data?.s3Url || raw?.s3Url;
+      if (!url) throw new Error('No URL returned');
+      setAvatarUrl(url);
+      // Persist avatarUrl to profile
+      await authFetch('/api/v1/users/me', {
+        method:'PATCH', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ avatarUrl: url }),
+      });
+      // Update cached user
+      const stored = localStorage.getItem('urb_user');
+      if (stored) {
+        const u = JSON.parse(stored);
+        const updated = { ...(u?.data ?? u), avatarUrl: url };
+        localStorage.setItem('urb_user', JSON.stringify(updated));
+      }
+      await refreshAuth();
+    } catch(err) { setPhotoError(err.message); }
+    finally { setUploadingPhoto(false); }
+  };
+
+  // Editable profile fields — seeded from real authUser
+  const [editFirst, setEditFirst] = useState(firstName);
+  const [editLast,  setEditLast]  = useState(lastName);
+  const [editPhone, setEditPhone] = useState(authUser?.phone || '');
+  const [editBio,   setEditBio]   = useState('');
+  const [saving,    setSaving]    = useState(false);
+  const [saveMsg,   setSaveMsg]   = useState('');
+
+  // Sync form fields when authUser loads
+  useEffect(() => {
+    const fn = authUser?.clientProfile?.fullName || authUser?.ownerProfile?.fullName || authUser?.brokerProfile?.fullName || '';
+    const parts = fn.trim().split(' ');
+    setEditFirst(parts[0] || '');
+    setEditLast(parts.slice(1).join(' ') || '');
+    setEditPhone(authUser?.phone || '');
+  }, [authUser]);
+
+  const handleSaveProfile = async () => {
+    setSaving(true); setSaveMsg('');
+    try {
+      const res = await authFetch('/api/v1/users/me', {
+        method:'PATCH', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ fullName: `${editFirst} ${editLast}`.trim(), phone: editPhone || undefined }),
+      });
+      if (res.ok) { await refreshAuth(); setSaveMsg('Saved ✓'); setTimeout(()=>setSaveMsg(''),3000); }
+      else { const d = await res.json(); setSaveMsg('Error: '+((d?.data?.message)||d.message||'Failed to save')); }
+    } catch(e) { setSaveMsg('Network error'); }
+    finally { setSaving(false); }
+  };
+
+  // Profile completion score
+  const completionFields = [!!editFirst, !!editLast, !!authUser?.email, !!editPhone, !!editBio];
+  const completionPct = Math.round(completionFields.filter(Boolean).length / completionFields.length * 100);
 
   // Allow settings from any role — use client by default
   return (
@@ -372,46 +455,86 @@ function SettingsPage({nav}) {
               <h2 className="font-display" style={{fontSize:22, fontWeight:700, letterSpacing:'-0.02em', margin:'0 0 4px'}}>Profile</h2>
               <p className="muted" style={{margin:'0 0 28px', fontSize:14}}>This is what owners and brokers see when you unlock a listing.</p>
 
+              {/* Hidden file input */}
+              <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp"
+                style={{display:'none'}} onChange={handlePhotoSelect}/>
+
               <div style={{display:'flex', alignItems:'center', gap:18, marginBottom:28}}>
-                <div style={{width:72, height:72, borderRadius:'50%', background:'var(--accent-500)', color:'#1A1100', display:'grid', placeItems:'center', fontWeight:800, fontSize:22}}>AS</div>
+                {/* Avatar — shows photo if uploaded, otherwise initials */}
+                <div style={{position:'relative', width:72, height:72}}>
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="avatar" style={{width:72, height:72, borderRadius:'50%', objectFit:'cover', border:'2px solid var(--border)'}}/>
+                  ) : (
+                    <div style={{width:72, height:72, borderRadius:'50%', background:roleColor, color:'#fff', display:'grid', placeItems:'center', fontWeight:800, fontSize:22}}>{initials}</div>
+                  )}
+                  {uploadingPhoto && (
+                    <div style={{position:'absolute', inset:0, borderRadius:'50%', background:'rgba(0,0,0,.4)', display:'grid', placeItems:'center', color:'#fff', fontSize:11}}>...</div>
+                  )}
+                </div>
                 <div>
-                  <button className="btn btn-outline btn-sm">Upload photo</button>
-                  <div style={{fontSize:11, color:'var(--text-faint)', marginTop:6}}>JPG or PNG · max 2 MB</div>
+                  <button className="btn btn-outline btn-sm" disabled={uploadingPhoto}
+                    onClick={()=>photoInputRef.current?.click()}>
+                    {uploadingPhoto ? 'Uploading…' : avatarUrl ? 'Change photo' : 'Upload photo'}
+                  </button>
+                  {avatarUrl && (
+                    <button className="btn btn-ghost btn-sm" style={{marginLeft:8, color:'var(--error)', fontSize:12}}
+                      onClick={()=>{ setAvatarUrl(null); }}>Remove</button>
+                  )}
+                  <div style={{fontSize:11, color:photoError?'var(--error)':'var(--text-faint)', marginTop:6}}>
+                    {photoError || 'JPG or PNG · max 2 MB'}
+                  </div>
                 </div>
               </div>
 
+              {saveMsg && (
+                <div style={{marginBottom:16, padding:'10px 14px', borderRadius:'var(--r-sm)', fontSize:13,
+                  background: saveMsg.startsWith('Error') ? '#fef2f2' : '#f0fdf4',
+                  color: saveMsg.startsWith('Error') ? 'var(--error)' : 'var(--success)',
+                }}>{saveMsg}</div>
+              )}
+
               <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:16}}>
-                <Field label="First name"><input className="input" defaultValue="Aanya"/></Field>
-                <Field label="Last name"><input className="input" defaultValue="Sharma"/></Field>
-                <Field label="Email"><input className="input" type="email" defaultValue="aanya@example.com"/></Field>
+                <Field label="First name">
+                  <input className="input" value={editFirst} onChange={e=>setEditFirst(e.target.value)} placeholder="First name"/>
+                </Field>
+                <Field label="Last name">
+                  <input className="input" value={editLast} onChange={e=>setEditLast(e.target.value)} placeholder="Last name"/>
+                </Field>
+                <Field label="Email">
+                  <input className="input" type="email" value={authUser?.email || ''} readOnly style={{opacity:.7, cursor:'not-allowed'}}/>
+                </Field>
                 <Field label="Phone">
                   <div style={{display:'flex', gap:8}}>
-                    <div className="input" style={{width:90, display:'flex', alignItems:'center', justifyContent:'center'}}>+91</div>
-                    <input className="input" defaultValue="98217 33342" style={{flex:1}}/>
+                    <div className="input" style={{width:54, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>+91</div>
+                    <input className="input" value={editPhone} onChange={e=>setEditPhone(e.target.value)} placeholder="10-digit number" style={{flex:1}}/>
                   </div>
                 </Field>
               </div>
 
               <div style={{marginTop:16}}>
                 <Field label="Bio (optional)">
-                  <textarea className="input" rows="3" style={{height:'auto', padding:'12px 14px', resize:'vertical', lineHeight:1.5}} defaultValue="Product designer at PhonePe. Quiet neighbourhood preferred."/>
+                  <textarea className="input" rows="3" value={editBio} onChange={e=>setEditBio(e.target.value)}
+                    style={{height:'auto', padding:'12px 14px', resize:'vertical', lineHeight:1.5}}
+                    placeholder="Tell owners a bit about yourself..."/>
                 </Field>
               </div>
 
               <div style={{marginTop:32, paddingTop:20, borderTop:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                 <div>
                   <div style={{fontSize:14, fontWeight:600}}>Profile completion</div>
-                  <div style={{fontSize:12, color:'var(--text-muted)'}}>Add income proof to reach 100% — verified tenants get 2.3× faster replies.</div>
+                  <div style={{fontSize:12, color:'var(--text-muted)', marginTop:2}}>Add income proof to reach 100% — verified tenants get 2.3× faster replies.</div>
                   <div style={{height:6, background:'var(--surface-sunken)', borderRadius:99, marginTop:8, overflow:'hidden', width:280}}>
-                    <div style={{height:'100%', width:'76%', background:'var(--brand-500)', borderRadius:99}}/>
+                    <div style={{height:'100%', width:`${completionPct}%`, background:'var(--brand-500)', borderRadius:99, transition:'width .4s'}}/>
                   </div>
                 </div>
-                <div className="font-display" style={{fontSize:32, fontWeight:800, letterSpacing:'-0.03em'}}>76%</div>
+                <div className="font-display" style={{fontSize:32, fontWeight:800, letterSpacing:'-0.03em'}}>{completionPct}%</div>
               </div>
 
               <div style={{display:'flex', gap:10, marginTop:24, justifyContent:'flex-end'}}>
-                <button className="btn btn-outline">Cancel</button>
-                <button className="btn btn-brand">Save changes</button>
+                <button className="btn btn-outline" onClick={()=>{ setEditFirst(firstName); setEditLast(lastName); setEditPhone(authUser?.phone||''); }}>Cancel</button>
+                <button className="btn btn-brand" disabled={saving} onClick={handleSaveProfile}>
+                  {saving ? 'Saving…' : 'Save changes'}
+                </button>
               </div>
             </div>
           )}
@@ -422,10 +545,10 @@ function SettingsPage({nav}) {
               <p className="muted" style={{margin:'0 0 28px', fontSize:14}}>Keep your account safe.</p>
 
               <SettingRow title="Two-factor authentication" sub="Add an extra OTP at every login from a new device." action={<button className="btn btn-outline btn-sm">Enable</button>}/>
-              <SettingRow title="Phone number" sub="+91 98217 33342 · verified Aug 2025" action={<button className="btn btn-outline btn-sm">Change</button>}/>
-              <SettingRow title="Email address" sub="aanya@example.com · verified" action={<button className="btn btn-outline btn-sm">Change</button>}/>
-              <SettingRow title="Active sessions" sub="3 devices · last activity 2 min ago" action={<button className="btn btn-outline btn-sm">Manage</button>}/>
-              <SettingRow title="Login history" sub="Last 10 logins available for review" action={<button className="btn btn-outline btn-sm">View</button>} last/>
+              <SettingRow title="Phone number" sub={editPhone ? `+91 ${editPhone} · on file` : 'No phone number added yet'} action={<button className="btn btn-outline btn-sm" onClick={()=>setSection('profile')}>Change</button>}/>
+              <SettingRow title="Email address" sub={`${authUser?.email || '—'} · ${authUser?.isVerified ? 'verified' : 'unverified'}`} action={<button className="btn btn-outline btn-sm">Change</button>}/>
+              <SettingRow title="Password" sub="Change your account password" action={<button className="btn btn-outline btn-sm">Change</button>}/>
+              <SettingRow title="Delete account" sub="Permanently remove your account and all data" action={<button className="btn btn-sm" style={{background:'var(--error)',color:'#fff',border:0}}>Delete</button>} last/>
             </div>
           )}
 
@@ -473,31 +596,27 @@ function SettingsPage({nav}) {
           {section === 'pay' && (
             <div className="card" style={{padding:32}}>
               <h2 className="font-display" style={{fontSize:22, fontWeight:700, letterSpacing:'-0.02em', margin:'0 0 4px'}}>Payment methods</h2>
-              <p className="muted" style={{margin:'0 0 28px', fontSize:14}}>Saved methods speed up checkout.</p>
+              <p className="muted" style={{margin:'0 0 28px', fontSize:14}}>Urbify uses PhonePe for secure one-time payments. No card details are stored on our servers.</p>
 
-              <div style={{display:'flex', flexDirection:'column', gap:10}}>
-                {[
-                  { type:'UPI', name:'rahul@oksbi', sub:'Default', primary:true },
-                  { type:'Card', name:'HDFC •••• 4242', sub:'Expires 12/27' },
-                  { type:'NetBank', name:'ICICI Bank', sub:'Saved Sep 2025' },
-                ].map((m, i)=>(
-                  <div key={i} style={{display:'flex', alignItems:'center', gap:14, padding:'14px 18px', borderRadius:'var(--r-md)', border: m.primary ? '1.5px solid var(--text)' : '1px solid var(--border)'}}>
-                    <div style={{width:42, height:42, borderRadius:'var(--r-sm)', background:'var(--surface-sunken)', display:'grid', placeItems:'center'}}>
-                      {m.type === 'UPI' && <Icon.upi/>}
-                      {m.type === 'Card' && <Icon.card/>}
-                      {m.type === 'NetBank' && <Icon.bank/>}
-                    </div>
-                    <div style={{flex:1}}>
-                      <div style={{fontSize:14, fontWeight:600}}>{m.name}</div>
-                      <div style={{fontSize:11, color:'var(--text-muted)'}}>{m.sub}</div>
-                    </div>
-                    {m.primary && <span className="chip" style={{height:22, fontSize:10, background:'var(--text)', color:'var(--bg)', border:0}}>DEFAULT</span>}
-                    <button className="btn btn-ghost btn-sm">⋯</button>
-                  </div>
-                ))}
+              <div style={{padding:'32px 24px', textAlign:'center', background:'var(--surface-sunken)', borderRadius:'var(--r-lg)'}}>
+                <div style={{fontSize:36, marginBottom:12}}>🔒</div>
+                <div style={{fontWeight:600, fontSize:15}}>Payments processed securely via PhonePe</div>
+                <p style={{color:'var(--text-muted)', fontSize:13, maxWidth:360, marginInline:'auto', marginTop:8, lineHeight:1.6}}>
+                  When you unlock a listing, you'll be redirected to PhonePe to pay via UPI, debit/credit card, or net banking. No payment details are saved here.
+                </p>
+                <div style={{display:'flex', gap:8, justifyContent:'center', marginTop:20, flexWrap:'wrap'}}>
+                  {['UPI', 'Debit card', 'Credit card', 'Net banking', 'Wallets'].map(m=>(
+                    <span key={m} className="chip" style={{height:28, fontSize:12, background:'var(--bg)', border:'1px solid var(--border)'}}>{m}</span>
+                  ))}
+                </div>
               </div>
 
-              <button className="btn btn-outline" style={{marginTop:16}}>＋ Add payment method</button>
+              <div style={{marginTop:20, padding:'14px 18px', borderRadius:'var(--r-md)', background:'var(--brand-50)', display:'flex', gap:12, alignItems:'center'}}>
+                <span style={{fontSize:18, color:'var(--brand-500)'}}><Icon.shield/></span>
+                <div style={{fontSize:13, color:'var(--brand-900)', lineHeight:1.5}}>
+                  <strong>Your payment history</strong> and GST invoices are available in the <a style={{color:'var(--brand-500)', cursor:'pointer', textDecoration:'underline'}} onClick={()=>nav('clientTx')}>Transactions</a> section.
+                </div>
+              </div>
             </div>
           )}
 
@@ -514,6 +633,19 @@ function SettingsPage({nav}) {
         </div>
       </div>
     </PortalShell>
+  );
+}
+
+function Toggle({on:initial}) {
+  const [on, setOn] = useState(initial);
+  return (
+    <button onClick={()=>setOn(!on)} style={{
+      width:42, height:24, borderRadius:99,
+      background: on ? 'var(--brand-500)' : 'var(--border-strong)',
+      border:0, cursor:'pointer', position:'relative', flexShrink:0, transition:'background .15s',
+    }}>
+      <div style={{position:'absolute', top:2, left: on ? 20 : 2, width:20, height:20, borderRadius:'50%', background:'#fff', transition:'left .2s', boxShadow:'0 1px 3px rgba(0,0,0,.2)'}}/>
+    </button>
   );
 }
 
@@ -644,60 +776,4 @@ function HelpPage({nav}) {
         <div style={{maxWidth:1100, margin:'40px auto 0', display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:16}}>
           <div className="card" style={{padding:28, textAlign:'center'}}>
             <div style={{fontSize:32}}>💬</div>
-            <div className="font-display" style={{fontSize:18, fontWeight:700, marginTop:14, letterSpacing:'-0.02em'}}>Live chat</div>
-            <div style={{fontSize:13, color:'var(--text-muted)', marginTop:6, lineHeight:1.5}}>Median reply time: 47 seconds</div>
-            <button className="btn btn-brand btn-sm" style={{marginTop:18}}>Open chat</button>
-          </div>
-          <div className="card" style={{padding:28, textAlign:'center'}}>
-            <div style={{fontSize:32}}>✉</div>
-            <div className="font-display" style={{fontSize:18, fontWeight:700, marginTop:14, letterSpacing:'-0.02em'}}>Email us</div>
-            <div style={{fontSize:13, color:'var(--text-muted)', marginTop:6, lineHeight:1.5}}>help@urbify.in · 4-hour median reply</div>
-            <button className="btn btn-outline btn-sm" style={{marginTop:18}} onClick={()=>nav('contact')}>Compose →</button>
-          </div>
-          <div className="card" style={{padding:28, textAlign:'center'}}>
-            <div style={{fontSize:32}}>📞</div>
-            <div className="font-display" style={{fontSize:18, fontWeight:700, marginTop:14, letterSpacing:'-0.02em'}}>Call us</div>
-            <div style={{fontSize:13, color:'var(--text-muted)', marginTop:6, lineHeight:1.5}}>+91 80-4567-8900 · all cities</div>
-            <button className="btn btn-outline btn-sm" style={{marginTop:18}}>Show numbers</button>
-          </div>
-        </div>
-      </section>
-
-      <Footer nav={nav}/>
-    </div>
-  );
-}
-
-// ─── 404 ────────────────────────────────────────────────────────────────
-function NotFoundPage({nav}) {
-  return (
-    <div style={{minHeight:'calc(100vh - 64px)', display:'grid', placeItems:'center', padding:'72px 28px', textAlign:'center'}}>
-      <div style={{maxWidth:680}}>
-        <div className="font-display" style={{
-          fontSize:'clamp(120px, 22vw, 280px)',
-          fontWeight:800, letterSpacing:'-0.06em', lineHeight:1,
-          color:'transparent',
-          WebkitTextStroke: '2px var(--text)',
-        }}>404</div>
-        <h1 className="font-display" style={{fontSize:'clamp(28px, 4vw, 44px)', fontWeight:800, letterSpacing:'-0.035em', margin:'24px 0 12px'}}>
-          This door doesn't open.
-        </h1>
-        <p style={{fontSize:17, color:'var(--text-muted)', maxWidth:480, marginInline:'auto', lineHeight:1.5}}>
-          The page you're looking for has moved out — or never existed. Try one of these instead.
-        </p>
-        <div style={{display:'flex', gap:10, justifyContent:'center', marginTop:32, flexWrap:'wrap'}}>
-          <button className="btn btn-brand btn-lg" onClick={()=>nav('home')}>Go home <Icon.arrow/></button>
-          <button className="btn btn-outline btn-lg" onClick={()=>nav('search')}>Browse homes</button>
-          <button className="btn btn-outline btn-lg" onClick={()=>nav('help')}>Help center</button>
-        </div>
-
-        <div style={{marginTop:64, fontSize:13, color:'var(--text-faint)'}}>
-          Found a broken link from outside Urbify? <a style={{color:'var(--brand-500)', textDecoration:'underline', cursor:'pointer'}} onClick={()=>nav('contact')}>Let us know</a>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-export { BrokerPortfolioPage, ClientTxPage, SettingsPage, SettingRow, HelpPage, NotFoundPage };
+            <div className="font-display" style={{fontSize:18, fontWeight:700, mar

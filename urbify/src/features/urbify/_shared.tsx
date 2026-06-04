@@ -417,7 +417,12 @@ function PortalShell({user, navItems, current, onNav, children}) {
             color:'#fff',
             display:'grid', placeItems:'center',
             fontWeight:700, fontSize:14,
-          }}>{user.initials}</div>
+            overflow:'hidden', flexShrink:0,
+          }}>
+            {user.avatarUrl
+              ? <img src={user.avatarUrl} alt={user.initials} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+              : user.initials}
+          </div>
           <div style={{minWidth:0, flex:1}}>
             <div style={{fontSize:13, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{user.name}</div>
             <div style={{fontSize:11, color:'var(--text-muted)'}}>{user.role}</div>

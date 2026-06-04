@@ -96,7 +96,11 @@ export function UrbifyApp({ initialPage = 'home' }) {
   useEffect(() => {
     try {
       const stored = localStorage.getItem('urb_user');
-      if (stored) setAuthUser(JSON.parse(stored));
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        // Handle both wrapped {data:{...}} and plain user object
+        setAuthUser(parsed?.data ?? parsed);
+      }
     } catch {}
 
     try { (window).__OLA_KEY__ = process.env.NEXT_PUBLIC_OLA_MAPS_API_KEY || ''; } catch {}
@@ -113,7 +117,7 @@ export function UrbifyApp({ initialPage = 'home' }) {
     setIsLoadingCities(true);
     fetch('/api/v1/properties/cities')
       .then(r => r.ok ? r.json() : null)
-      .then(data => { if (Array.isArray(data) && data.length) setApiCities(data); })
+      .then(data => { const arr = Array.isArray(data) ? data : (data?.data || []); if (arr.length) setApiCities(arr); })
       .catch(() => {})
       .finally(() => setIsLoadingCities(false));
   }, []);
@@ -123,7 +127,7 @@ export function UrbifyApp({ initialPage = 'home' }) {
     if (!token) return;
     fetch('/api/v1/search/shortlist', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : [])
-      .then(items => { if (Array.isArray(items)) setShortlistIds(items.map(i => i.listingId || i.id)); })
+      .then(raw => { const items = Array.isArray(raw) ? raw : (raw?.data || []); if (Array.isArray(items)) setShortlistIds(items.map(i => i.listingId || i.id)); })
       .catch(() => {});
   }, [authUser]);
 
@@ -147,7 +151,8 @@ export function UrbifyApp({ initialPage = 'home' }) {
     try {
       const res = await fetch('/api/v1/users/me', { headers: { Authorization: `Bearer ${token}` } });
       if (res.ok) {
-        const user = await res.json();
+        const raw = await res.json();
+        const user = raw?.data ?? raw; // unwrap interceptor envelope
         localStorage.setItem('urb_user', JSON.stringify(user));
         setAuthUser(user);
       }

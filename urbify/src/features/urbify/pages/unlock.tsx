@@ -10,6 +10,7 @@ import {
   Icon, Logo, Img, LockedAddress, ListingCard, Modal,
   PortalShell, StatCard, StatusBadge, DashHeader,
 } from '../_shared';
+import { authFetch } from '@/lib/authFetch';
 
 function UnlockPage({nav, listing}) {
   const [step, setStep] = useState(1);
@@ -25,18 +26,18 @@ function UnlockPage({nav, listing}) {
     setPayError("");
     setProcessing(true);
     try {
-      const token = localStorage.getItem('urb_access');
-      if (!token) { nav('auth'); return; }
+      if (!localStorage.getItem('urb_access')) { nav('auth'); return; }
 
       // 1. Create PhonePe order — backend returns a redirectUrl
       const listingApiId = listing._api?.id || listing.id;
-      const orderRes = await fetch('/api/v1/payments/orders', {
+      const orderRes = await authFetch('/api/v1/payments/orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ listingId: listingApiId }),
       });
-      const orderData = await orderRes.json();
-      if (!orderRes.ok) throw new Error(orderData.message || 'Could not create payment order');
+      const orderRaw = await orderRes.json();
+      const orderData = orderRaw?.data ?? orderRaw;
+      if (!orderRes.ok) throw new Error(orderRaw.message || orderData.message || 'Could not create payment order');
 
       // 2. Redirect to PhonePe payment page
       // After payment, PhonePe redirects back to /payment/callback?txnId=<merchantTransactionId>
@@ -303,7 +304,24 @@ function Row({label, value, big}) {
 // ─── Success screen — the BIG MOMENT ──────────────────────────────────────
 function SuccessScreen({listing, nav}) {
   const [revealed, setRevealed] = useState(false);
+  const [fullListing, setFullListing] = useState(null);
   useEffect(()=>{ const t = setTimeout(()=>setRevealed(true), 500); return ()=>clearTimeout(t); }, []);
+
+  // Fetch full listing data (address + owner contact) — requires valid unlock
+  useEffect(() => {
+    const token = localStorage.getItem('urb_access');
+    const id = listing?._api?.id || listing?.id;
+    if (!token || !id) return;
+    authFetch(`/api/v1/properties/${id}/full`)
+      .then(r => r.ok ? r.json() : null)
+      .then(raw => { if (raw) setFullListing(raw?.data ?? raw); })
+      .catch(() => {});
+  }, [listing?.id]);
+
+  const ownerName = fullListing?.owner?.ownerProfile?.fullName || fullListing?.owner?.brokerProfile?.fullName || listing?.owner || 'Owner';
+  const ownerInitials = ownerName.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const ownerPhone = fullListing?.owner?.phone || null;
+  const fullAddress = fullListing?.fullAddress || null;
 
   const fmt = (n)=>n.toLocaleString("en-IN");
 
@@ -346,9 +364,7 @@ function SuccessScreen({listing, nav}) {
               filter: revealed ? 'blur(0)' : 'blur(10px)',
               transition: 'filter .8s ease',
             }}>
-              #{listing.id.slice(-3)}, 4th Block,<br/>
-              80 Feet Road, {listing.locality},<br/>
-              {listing.city} 560034
+              {fullAddress || `${listing.locality}, ${listing.city}`}
             </div>
             <button className="btn btn-outline btn-sm" style={{marginTop:14}}>Copy address</button>
           </div>
@@ -363,10 +379,12 @@ function SuccessScreen({listing, nav}) {
                 background:'var(--brand-500)', color:'#fff',
                 display:'grid', placeItems:'center',
                 fontWeight:800, fontSize:18,
-              }}>RP</div>
+              }}>{ownerInitials}</div>
               <div>
-                <div style={{fontWeight:600, fontSize:15}}>Rohan Pillai</div>
-                <div style={{fontSize:12, color:'var(--text-muted)'}}>Direct Owner · Verified</div>
+                <div style={{fontWeight:600, fontSize:15}}>{ownerName}</div>
+                <div style={{fontSize:12, color:'var(--text-muted)'}}>
+                  {fullListing?.isBrokerListing ? 'Broker listing' : 'Direct Owner'} · Verified
+                </div>
               </div>
             </div>
             <div className="font-mono" style={{
@@ -374,7 +392,7 @@ function SuccessScreen({listing, nav}) {
               marginTop:14,
               filter: revealed ? 'blur(0)' : 'blur(10px)',
               transition: 'filter .8s ease .15s',
-            }}>+91 98450 ••• ••• <span style={{filter: revealed ? 'none' : 'none'}}>23</span></div>
+            }}>{ownerPhone ? `+91 ${ownerPhone}` : 'Contact via listing'}</div>
             <div style={{display:'flex', gap:8, marginTop:14}}>
               <button className="btn btn-brand btn-sm" style={{flex:1}}><Icon.phone/> Tap to call</button>
               <button className="btn btn-outline btn-sm" style={{flex:1}}>WhatsApp</button>
@@ -393,23 +411,4 @@ function SuccessScreen({listing, nav}) {
           <button className="btn btn-outline btn-sm">Download</button>
         </div>
 
-        <div style={{marginTop:32, padding:18, background:'#FEF3C7', borderRadius:'var(--r-md)', display:'flex', gap:14, alignItems:'flex-start'}}>
-          <span style={{fontSize:18, color:'#92400E', marginTop:1}}><Icon.shield/></span>
-          <div style={{fontSize:13, color:'#78350F', lineHeight:1.55}}>
-            <strong>24-hour grace.</strong> If the address turns out invalid or the owner is unreachable, hit "Report issue" within 24 hours for an instant refund.
-          </div>
-        </div>
-
-        <div style={{display:'flex', gap:10, marginTop:32}}>
-          <button className="btn btn-outline btn-lg" onClick={()=>nav('search')}>Browse more homes</button>
-          <button className="btn btn-primary btn-lg" onClick={()=>nav('detail', listing.id)} style={{flex:1}}>Back to listing <Icon.arrow/></button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ---- how.jsx ----
-// how.jsx — How It Works page
-
-export { UnlockPage, SuccessScreen };
+        <div style={{marginTop:32, padding:18, background:'#FEF3C7', borderRadius:'v

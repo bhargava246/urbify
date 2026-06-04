@@ -23,7 +23,10 @@ export function SiteHeader() {
   const syncAuth = () => {
     try {
       const stored = localStorage.getItem('urb_user');
-      setUser(stored ? JSON.parse(stored) : null);
+      if (!stored) { setUser(null); return; }
+      const parsed = JSON.parse(stored);
+      // Handle both wrapped {success,data:{...}} and plain user object
+      setUser(parsed?.data ?? parsed);
     } catch { setUser(null); }
   };
 
@@ -89,7 +92,12 @@ export function SiteHeader() {
               <button onClick={()=>setMenuOpen(o=>!o)} style={{
                 width:36, height:36, borderRadius:'50%', background:'var(--brand-500)', color:'#fff',
                 border:0, cursor:'pointer', fontWeight:700, fontSize:13, display:'grid', placeItems:'center',
-              }}>{initials}</button>
+                overflow:'hidden', padding:0,
+              }}>
+                {user?.avatarUrl
+                  ? <img src={user.avatarUrl} alt={initials} style={{width:'100%', height:'100%', objectFit:'cover'}}/>
+                  : initials}
+              </button>
               {menuOpen && (
                 <div style={{
                   position:'absolute', right:0, top:44, zIndex:200, minWidth:200, padding:'6px 0',

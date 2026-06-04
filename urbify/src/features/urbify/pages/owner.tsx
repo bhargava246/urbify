@@ -10,13 +10,15 @@ import {
   Icon, Logo, Img, LockedAddress, ListingCard, Modal,
   PortalShell, StatCard, StatusBadge, DashHeader,
 } from '../_shared';
+import { authFetch } from '@/lib/authFetch';
 
 const OWNER_USER = { initials:"?", name:"Loading…", role:"Owner", color:'var(--brand-500)' };
 
-const OWNER_NAV = (current, onNav, navMain) => [
-  { id:'ownerDash',     label:'Dashboard',  icon:'◧' },
-  { id:'ownerList',     label:'My listings', icon:'⊞', badge:'4' },
-  { id:'ownerInquiries',label:'Inquiries',   icon:'◐', badge:'7', badgeTone:'danger' },
+// Badges are passed dynamically from real data — no hardcoded numbers
+const OWNER_NAV = (listingCount?: number, inquiryCount?: number) => [
+  { id:'ownerDash',     label:'Dashboard',   icon:'◧' },
+  { id:'ownerList',     label:'My listings', icon:'⊞', ...(listingCount ? {badge:String(listingCount)} : {}) },
+  { id:'ownerInquiries',label:'Inquiries',   icon:'◐', ...(inquiryCount ? {badge:String(inquiryCount), badgeTone:'danger'} : {}) },
   { id:'ownerNew',      label:'Add listing', icon:'＋' },
   { divider:'account' },
   { id:'settings', label:'Settings', icon:'⚙' },
@@ -30,9 +32,8 @@ function OwnerDashPage({nav}) {
   const [loadingListings, setLoadingListings] = useState(true);
 
   const loadListings = useCallback(() => {
-    const token = localStorage.getItem('urb_access');
-    if (!token) { setLoadingListings(false); return; }
-    fetch('/api/v1/properties/my/listings', { headers: { Authorization: `Bearer ${token}` } })
+    if (!localStorage.getItem('urb_access')) { setLoadingListings(false); return; }
+    authFetch('/api/v1/properties/my/listings')
       .then(r => r.ok ? r.json() : [])
       .then(data => {
         const arr = Array.isArray(data) ? data : (data.data || []);
@@ -52,33 +53,22 @@ function OwnerDashPage({nav}) {
   }, [loadListings]);
 
   const handleTogglePause = async (id, currentStatus) => {
-    const token = localStorage.getItem('urb_access');
-    if (!token) return;
     const nextStatus = currentStatus === 'paused' ? 'ACTIVE' : 'PAUSED';
     try {
-      const res = await fetch(`/api/v1/properties/${id}/status`, {
+      const res = await authFetch(`/api/v1/properties/${id}/status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: nextStatus }),
       });
-      if (res.ok) {
-        loadListings();
-      }
+      if (res.ok) loadListings();
     } catch(e) { console.error(e); }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm("Are you sure you want to delete this listing?")) return;
-    const token = localStorage.getItem('urb_access');
-    if (!token) return;
+    if (!confirm('Are you sure you want to delete this listing?')) return;
     try {
-      const res = await fetch(`/api/v1/properties/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        loadListings();
-      }
+      const res = await authFetch(`/api/v1/properties/${id}`, { method: 'DELETE' });
+      if (res.ok) loadListings();
     } catch(e) { console.error(e); }
   };
 
@@ -88,16 +78,17 @@ function OwnerDashPage({nav}) {
   const unlocksThisMonth = myListings.reduce((s, l) => s + (l.unlocks || 0), 0);
   const expiringCount = myListings.filter(l => typeof l.daysLeft === 'number' && l.daysLeft <= 3).length;
 
-  const items = OWNER_NAV(null, null);
+  const navItems = OWNER_NAV(myListings.length || undefined, undefined);
   const portalUser = authUser ? {
     initials: firstName.slice(0,2).toUpperCase(),
     name: userName,
     role: 'Direct Owner',
     color: 'var(--brand-500)',
+    avatarUrl: authUser.avatarUrl || null,
   } : OWNER_USER;
 
   return (
-    <PortalShell user={portalUser} navItems={items} current="ownerDash" onNav={(id)=>nav(id)}>
+    <PortalShell user={portalUser} navItems={navItems} current="ownerDash" onNav={(id)=>nav(id)}>
       <DashHeader
         title={`Welcome back, ${firstName}.`}
         subtitle="Here's how your listings are doing."
@@ -178,33 +169,39 @@ function OwnerDashPage({nav}) {
         </table>
       </div>
 
-      {/* activity feed */}
+      {/* activity feed — built from real listings data */}
       <div style={{marginTop:24}}>
         <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:14}}>
           <div className="font-display" style={{fontSize:18, fontWeight:700, letterSpacing:'-0.02em'}}>Recent activity</div>
           <button className="btn btn-ghost btn-sm" onClick={()=>nav('ownerInquiries')}>View all</button>
         </div>
         <div className="card" style={{padding:0, overflow:'hidden'}}>
-          {[
-            { who:"A tenant", what:`unlocked your 2 BHK in Koramangala`, when:"2 hours ago", money:"+₹6,250" },
-            { who:"Tenant 'P. Mehta'", what:`marked your HSR Layout 3 BHK as their favourite`, when:"5 hours ago" },
-            { who:"A tenant", what:`unlocked your studio in Indiranagar`, when:"yesterday", money:"+₹4,400" },
-            { who:"System", what:`approved your new listing in Whitefield`, when:"yesterday" },
-            { who:"A tenant", what:`unlocked your 2 BHK in Koramangala`, when:"2 days ago", money:"+₹6,250" },
-          ].map((a, i)=>(
-            <div key={i} style={{padding:'14px 22px', borderTop: i===0 ? 0 : '1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center', gap:14}}>
-              <div style={{display:'flex', alignItems:'center', gap:12, fontSize:14}}>
-                <div style={{width:34, height:34, borderRadius:'50%', background:'var(--surface-sunken)', display:'grid', placeItems:'center', fontSize:14}}>
-                  {a.money ? <Icon.unlock/> : <Icon.heart filled/>}
-                </div>
-                <div>
-                  <span style={{fontWeight:600}}>{a.who}</span> <span style={{color:'var(--text-muted)'}}>{a.what}</span>
-                  <div style={{fontSize:11, color:'var(--text-faint)', marginTop:2}}>{a.when}</div>
-                </div>
-              </div>
-              {a.money && <span style={{fontWeight:700, color:'var(--success)', fontSize:14}}>{a.money}</span>}
+          {myListings.length === 0 ? (
+            <div style={{padding:'32px 22px', textAlign:'center', color:'var(--text-muted)', fontSize:14}}>
+              {loadingListings ? 'Loading…' : 'No activity yet. Add your first listing to get started.'}
             </div>
-          ))}
+          ) : (
+            myListings.slice(0,5).map((l, i)=>(
+              <div key={l.id} style={{padding:'14px 22px', borderTop: i===0 ? 0 : '1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center', gap:14}}>
+                <div style={{display:'flex', alignItems:'center', gap:12, fontSize:14}}>
+                  <div style={{width:34, height:34, borderRadius:'50%', background:'var(--surface-sunken)', display:'grid', placeItems:'center', fontSize:14}}>
+                    {l.status === 'live' ? <Icon.unlock/> : <Icon.bolt/>}
+                  </div>
+                  <div>
+                    <span style={{fontWeight:600}}>{l.bhk} BHK · {l.locality}</span>
+                    <span style={{color:'var(--text-muted)'}}> — </span>
+                    <span style={{color:'var(--text-muted)'}}>
+                      {l.status === 'live' ? `Live · ${l.unlocks || 0} unlock${l.unlocks !== 1 ? 's' : ''}` :
+                       l.status === 'pending' ? 'Pending review' :
+                       l.status === 'rented' ? 'Rented / sold' : 'Paused'}
+                    </span>
+                    <div style={{fontSize:11, color:'var(--text-faint)', marginTop:2}}>₹{l.rentK}k/mo</div>
+                  </div>
+                </div>
+                <StatusBadge status={l.status}/>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </PortalShell>
@@ -220,7 +217,7 @@ function OwnerListPage({nav}) {
   const loadListings = useCallback(() => {
     const token = localStorage.getItem('urb_access');
     if (!token) { setLoadingList(false); return; }
-    fetch('/api/v1/properties/my/listings', { headers: { Authorization: `Bearer ${token}` } })
+    authFetch('/api/v1/properties/my/listings')
       .then(r => r.ok ? r.json() : [])
       .then(data => {
         const arr = Array.isArray(data) ? data : (data.data || []);
@@ -240,33 +237,22 @@ function OwnerListPage({nav}) {
   }, [loadListings]);
 
   const handleTogglePause = async (id, currentStatus) => {
-    const token = localStorage.getItem('urb_access');
-    if (!token) return;
     const nextStatus = currentStatus === 'paused' ? 'ACTIVE' : 'PAUSED';
     try {
-      const res = await fetch(`/api/v1/properties/${id}/status`, {
+      const res = await authFetch(`/api/v1/properties/${id}/status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: nextStatus }),
       });
-      if (res.ok) {
-        loadListings();
-      }
+      if (res.ok) loadListings();
     } catch(e) { console.error(e); }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm("Are you sure you want to delete this listing?")) return;
-    const token = localStorage.getItem('urb_access');
-    if (!token) return;
+    if (!confirm('Are you sure you want to delete this listing?')) return;
     try {
-      const res = await fetch(`/api/v1/properties/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        loadListings();
-      }
+      const res = await authFetch(`/api/v1/properties/${id}`, { method: 'DELETE' });
+      if (res.ok) loadListings();
     } catch(e) { console.error(e); }
   };
 
@@ -328,7 +314,7 @@ function OwnerInquiriesPage({nav, navItems: navItemsProp = null, navCurrent = 'o
     setLoadingInquiries(true);
     const token = localStorage.getItem('urb_access');
     if (!token) { setLoadingInquiries(false); return; }
-    fetch('/api/v1/properties/my/unlocks', { headers: { Authorization: `Bearer ${token}` } })
+    authFetch('/api/v1/properties/my/unlocks')
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data && Array.isArray(data.items)) setInquiries(data.items);
@@ -411,7 +397,7 @@ function OwnerNewPage({nav}) {
   const handleSubmit = async () => {
     setSubmitError(''); setSubmitting(true);
     const token = localStorage.getItem('urb_access');
-    if (!token) { setSubmitError('Please sign in first'); setSubmitting(false); return; }
+    if (!token) { window.location.href = '/auth'; return; }
 
     const loc = formData.location || {};
     const payload = {
@@ -442,13 +428,14 @@ function OwnerNewPage({nav}) {
     };
 
     try {
-      const res = await fetch('/api/v1/properties', {
+      const res = await authFetch('/api/v1/properties', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to create listing');
+      const raw = await res.json();
+      const data = raw?.data ?? raw;
+      if (!res.ok) throw new Error(raw.message || data.message || 'Failed to create listing');
       // listing created — navigate to dashboard
       nav('ownerDash');
     } catch(e) {
@@ -857,42 +844,116 @@ function StepPricing({formData, patchForm, onNext, onBack}) {
 }
 
 function StepPhotos({onNext, onBack}) {
+  const [photos, setPhotos] = useState([]); // [{preview, file, uploading, url, error}]
+  const [uploadError, setUploadError] = useState('');
+  const fileInputRef = useRef(null);
+
+  const addFiles = async (files) => {
+    const valid = Array.from(files).filter(f => {
+      if (!['image/jpeg','image/png','image/webp'].includes(f.type)) return false;
+      if (f.size > 8 * 1024 * 1024) return false;
+      return true;
+    });
+    if (!valid.length) { setUploadError('Only JPG/PNG/WEBP under 8 MB accepted'); return; }
+    setUploadError('');
+    const token = localStorage.getItem('urb_access');
+
+    const newPhotos = valid.map(f => ({
+      id: Math.random().toString(36).slice(2),
+      file: f,
+      preview: URL.createObjectURL(f),
+      uploading: true,
+      url: null,
+      error: null,
+    }));
+    setPhotos(p => [...p, ...newPhotos]);
+
+    // Upload each file
+    for (const photo of newPhotos) {
+      try {
+        const form = new FormData();
+        form.append('file', photo.file);
+        const res = await authFetch('/api/v1/uploads/image?folder=listings', {
+          method:'POST', body:form,
+        });
+        const raw = await res.json();
+        const url = raw?.data?.s3Url || raw?.s3Url;
+        setPhotos(p => p.map(ph => ph.id === photo.id ? {...ph, uploading:false, url} : ph));
+      } catch(e) {
+        setPhotos(p => p.map(ph => ph.id === photo.id ? {...ph, uploading:false, error:'Upload failed'} : ph));
+      }
+    }
+  };
+
+  const removePhoto = (id) => setPhotos(p => p.filter(ph => ph.id !== id));
+
+  const handleDrop = (e) => { e.preventDefault(); addFiles(e.dataTransfer.files); };
+
+  const uploadedCount = photos.filter(p => p.url).length;
+
   return (
     <div>
       <h2 className="font-display" style={{fontSize:24, fontWeight:700, letterSpacing:'-0.02em', margin:'0 0 6px'}}>Add photos</h2>
-      <p className="muted" style={{margin:'0 0 20px', fontSize:14}}>Minimum 6 photos required. Listings with more photos get 3× more unlocks.</p>
+      <p className="muted" style={{margin:'0 0 20px', fontSize:14}}>
+        Add at least 3 photos. Listings with more photos get 3× more unlocks.
+        {uploadedCount > 0 && <strong style={{color:'var(--text)'}}> {uploadedCount} uploaded ✓</strong>}
+      </p>
 
-      <div style={{display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:12}}>
-        {INTERIORS.slice(0, 3).map((src, i)=>(
-          <div key={i} style={{position:'relative', aspectRatio:'4/3', borderRadius:'var(--r-md)', overflow:'hidden'}}>
-            <Img src={src} style={{width:'100%', height:'100%'}}/>
-            <button style={{position:'absolute', top:8, right:8, width:24, height:24, borderRadius:'50%', background:'rgba(15,22,20,.7)', color:'#fff', border:0, cursor:'pointer', fontSize:11}}>✕</button>
+      {/* hidden file input */}
+      <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp"
+        multiple style={{display:'none'}} onChange={e => addFiles(e.target.files)}/>
+
+      <div
+        style={{display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:12}}
+        onDragOver={e=>e.preventDefault()} onDrop={handleDrop}
+      >
+        {photos.map((ph, i) => (
+          <div key={ph.id} style={{position:'relative', aspectRatio:'4/3', borderRadius:'var(--r-md)', overflow:'hidden', background:'var(--surface-sunken)'}}>
+            <img src={ph.preview} style={{width:'100%', height:'100%', objectFit:'cover'}}/>
+            {ph.uploading && (
+              <div style={{position:'absolute', inset:0, background:'rgba(0,0,0,.45)', display:'grid', placeItems:'center', color:'#fff', fontSize:11, fontWeight:600}}>
+                Uploading…
+              </div>
+            )}
+            {ph.error && (
+              <div style={{position:'absolute', inset:0, background:'rgba(220,38,38,.7)', display:'grid', placeItems:'center', color:'#fff', fontSize:11, fontWeight:600}}>
+                Failed
+              </div>
+            )}
+            {!ph.uploading && (
+              <button onClick={()=>removePhoto(ph.id)} style={{position:'absolute', top:8, right:8, width:24, height:24, borderRadius:'50%', background:'rgba(15,22,20,.75)', color:'#fff', border:0, cursor:'pointer', fontSize:11}}>✕</button>
+            )}
             {i === 0 && <span className="chip chip-dark" style={{position:'absolute', bottom:8, left:8, height:22, fontSize:10}}>COVER</span>}
           </div>
         ))}
 
-        <button style={{
-          aspectRatio:'4/3', borderRadius:'var(--r-md)',
-          border:'2px dashed var(--border-strong)', background:'transparent',
-          display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:8,
-          cursor:'pointer', color:'var(--text-muted)',
-          fontSize:13, fontWeight:500,
-        }}>
+        {/* Drop zone */}
+        <button
+          onClick={()=>fileInputRef.current?.click()}
+          style={{
+            aspectRatio:'4/3', borderRadius:'var(--r-md)',
+            border:'2px dashed var(--border-strong)', background:'transparent',
+            display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:8,
+            cursor:'pointer', color:'var(--text-muted)', fontSize:13, fontWeight:500,
+          }}
+        >
           <div style={{fontSize:24}}>＋</div>
-          Drop photos here
+          {photos.length === 0 ? 'Click or drop photos' : 'Add more'}
           <span style={{fontSize:11, color:'var(--text-faint)'}}>JPG, PNG · max 8MB each</span>
         </button>
       </div>
 
+      {uploadError && <div style={{marginTop:10, fontSize:13, color:'var(--error)'}}>{uploadError}</div>}
+
       <div style={{marginTop:18, padding:'14px 18px', background:'var(--surface-sunken)', borderRadius:'var(--r-md)', display:'flex', gap:14, alignItems:'flex-start'}}>
-        <span style={{fontSize:18, color:'var(--accent-600)', marginTop:2}}><Icon.sparkle/></span>
-        <div style={{fontSize:13, lineHeight:1.55}}>
-          <strong>AI tips for your photos:</strong> <span style={{color:'var(--text-muted)'}}>Photo 2 appears slightly dark — try shooting in daylight. Photo 3 looks great. Add a balcony / view photo to boost engagement.</span>
+        <span style={{fontSize:18, color:'var(--brand-500)', marginTop:2}}><Icon.sparkle/></span>
+        <div style={{fontSize:13, lineHeight:1.55, color:'var(--text-muted)'}}>
+          <strong style={{color:'var(--text)'}}>Tips:</strong> Use natural light, shoot from corners to show space, include kitchen, bathrooms, and any standout features like a balcony or garden.
         </div>
       </div>
 
       <Field label="Virtual tour link (optional)" style={{marginTop:24}}>
-        <input className="input" placeholder="https://youtube.com/... or matterport URL"/>
+        <input className="input" placeholder="https://youtube.com/... or Matterport URL"/>
       </Field>
 
       <WizardNav onBack={onBack} onNext={onNext} nextLabel="Continue"/>

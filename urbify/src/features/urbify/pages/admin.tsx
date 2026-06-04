@@ -10,6 +10,7 @@ import {
   Icon, Logo, Img, LockedAddress, ListingCard, Modal,
   PortalShell, StatCard, StatusBadge, DashHeader,
 } from '../_shared';
+import { authFetch } from '@/lib/authFetch';
 import { Field } from './owner';
 
 // ADMIN_USER is now derived from authUser in each component
@@ -44,18 +45,15 @@ function AdminDashPage({nav}) {
   const [stats, setStats] = useState({ listings: 0, pending: 0, users: 0, revenue: 0 });
 
   useEffect(() => {
-    const token = localStorage.getItem('urb_access');
-    if (!token) return;
-    const h = { Authorization: `Bearer ${token}` };
     Promise.allSettled([
-      fetch('/api/v1/properties/admin/all?limit=1', { headers: h }).then(r => r.ok ? r.json() : null),
-      fetch('/api/v1/properties/admin/all?status=PENDING_REVIEW&limit=1', { headers: h }).then(r => r.ok ? r.json() : null),
-      fetch('/api/v1/users?limit=1', { headers: h }).then(r => r.ok ? r.json() : null),
+      authFetch('/api/v1/properties/admin/all?limit=1').then(r => r.ok ? r.json() : null),
+      authFetch('/api/v1/properties/admin/all?status=PENDING_REVIEW&limit=1').then(r => r.ok ? r.json() : null),
+      authFetch('/api/v1/users?limit=1').then(r => r.ok ? r.json() : null),
     ]).then(([listings, pending, users]) => {
       setStats({
-        listings: listings.value?.total ?? 0,
-        pending:  pending.value?.total  ?? 0,
-        users:    users.value?.total    ?? 0,
+        listings: listings.value?.data?.total ?? listings.value?.total ?? 0,
+        pending:  pending.value?.data?.total  ?? pending.value?.total  ?? 0,
+        users:    users.value?.data?.total    ?? users.value?.total    ?? 0,
         revenue: 0,
       });
     });
@@ -229,6 +227,15 @@ function Legend({color, label, value}) {
   );
 }
 
+function Spec({label, value}) {
+  return (
+    <div style={{padding:'12px 16px', background:'var(--surface-sunken)', borderRadius:'var(--r-sm)'}}>
+      <div style={{fontSize:11, color:'var(--text-muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.06em', marginBottom:4}}>{label}</div>
+      <div style={{fontSize:14, fontWeight:600}}>{value ?? '—'}</div>
+    </div>
+  );
+}
+
 // ─── Moderation Queue ─────────────────────────────────────────────────────
 function AdminModPage({nav}) {
   const adminUser = useAdminUser();
@@ -239,9 +246,7 @@ function AdminModPage({nav}) {
   useEffect(() => {
     const token = localStorage.getItem('urb_access');
     if (!token) { setLoadingQueue(false); return; }
-    fetch('/api/v1/properties/admin/all?status=PENDING_REVIEW&limit=50', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    authFetch('/api/v1/properties/admin/all?status=PENDING_REVIEW&limit=50')
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         const items = (Array.isArray(data) ? data : (data?.data || [])).map(l => ({
@@ -327,14 +332,14 @@ function AdminModPage({nav}) {
               <button className="btn btn-sm" style={{background:'var(--error)', color:'#fff', border:0}} onClick={async () => {
                 const token = localStorage.getItem('urb_access');
                 if (!token) return;
-                await fetch(`/api/v1/properties/admin/${active.id}/moderate`, { method:'PATCH', headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`}, body:JSON.stringify({status:'REJECTED', note:'Rejected by admin'}) });
+                await authFetch(`/api/v1/properties/admin/${active.id}/moderate`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:'REJECTED', note:'Rejected by admin'}) });
                 setQueue(q => q.filter((_,i)=>i!==activeIdx));
                 setActiveIdx(0);
               }}>Reject</button>
               <button className="btn btn-sm" style={{background:'var(--success)', color:'#fff', border:0}} onClick={async () => {
                 const token = localStorage.getItem('urb_access');
                 if (!token) return;
-                await fetch(`/api/v1/properties/admin/${active.id}/moderate`, { method:'PATCH', headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`}, body:JSON.stringify({status:'ACTIVE'}) });
+                await authFetch(`/api/v1/properties/admin/${active.id}/moderate`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:'ACTIVE'}) });
                 setQueue(q => q.filter((_,i)=>i!==activeIdx));
                 setActiveIdx(0);
               }}>Approve</button>
@@ -408,7 +413,7 @@ function AdminUsersPage({nav}) {
     const token = localStorage.getItem('urb_access');
     if (!token) { setLoadingUsers(false); return; }
     const roleParam = filter !== 'all' ? `&role=${filter.toUpperCase()}` : '';
-    fetch(`/api/v1/users?limit=50&page=1${roleParam}`, { headers: { Authorization: `Bearer ${token}` } })
+    authFetch(`/api/v1/users?limit=50&page=1${roleParam}`)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         const items = Array.isArray(data) ? data : (data?.data || []);
@@ -540,10 +545,31 @@ function AdminUsersPage({nav}) {
 // ─── ADMIN REVENUE ────────────────────────────────────────────────────────
 function AdminRevenuePage({nav}) {
   const adminUser = useAdminUser();
+  const [revData, setRevData] = useState(null);
+  const [txns, setTxns] = useState([]);
+  const [loadingRev, setLoadingRev] = useState(true);
+
+  useEffect(() => {
+    const now = new Date();
+    const from = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate()).toISOString();
+    const to = now.toISOString();
+    authFetch(`/api/v1/payments/revenue?from=${from}&to=${to}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(raw => {
+        const d = raw?.data ?? raw;
+        if (d) setRevData(d);
+        if (Array.isArray(d?.transactions)) setTxns(d.transactions);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingRev(false));
+  }, []);
+
+  const fmt = (n) => (n || 0).toLocaleString('en-IN');
+
   return (
     <PortalShell user={adminUser} navItems={ADMIN_NAV()} current="adminRev" onNav={(id)=>nav(id)}>
       <DashHeader title="Revenue & analytics"
-        subtitle="Q4 2026 · last 30 days"
+        subtitle={`Last 30 days · ${loadingRev ? 'loading…' : 'live data'}`}
         actions={
           <>
             <select className="input select btn-sm" style={{height:34, fontSize:13}}><option>Last 30 days</option><option>This quarter</option><option>Year to date</option></select>
@@ -553,10 +579,10 @@ function AdminRevenuePage({nav}) {
 
       {/* big number row */}
       <div style={{display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:14, marginBottom:24}}>
-        <StatCard label="Gross revenue (30d)" value="₹48.2L" trend="+18.6%" sub="vs prev period"/>
-        <StatCard label="GST collected" value="₹7.4L" sub="18% of gross"/>
-        <StatCard label="Net revenue" value="₹40.8L" trend="+19.2%" sub="post-GST"/>
-        <StatCard label="Refunds processed" value="₹16,400" sub="0.34% rate"/>
+        <StatCard label="Gross revenue (30d)" value={loadingRev ? '…' : revData?.grossRevenue ? `₹${fmt(revData.grossRevenue)}` : '₹0'} sub="last 30 days"/>
+        <StatCard label="GST collected" value={loadingRev ? '…' : revData?.gstAmount ? `₹${fmt(revData.gstAmount)}` : '₹0'} sub="18% of gross"/>
+        <StatCard label="Net revenue" value={loadingRev ? '…' : revData?.netRevenue ? `₹${fmt(revData.netRevenue)}` : '₹0'} sub="post-GST"/>
+        <StatCard label="Refunds" value={loadingRev ? '…' : revData?.refundAmount ? `₹${fmt(revData.refundAmount)}` : '₹0'} sub="processed this period"/>
       </div>
 
       {/* daily chart */}
@@ -700,29 +726,36 @@ function AdminRevenuePage({nav}) {
             </tr>
           </thead>
           <tbody>
-            {[
-              // TODO: replace with real admin transactions from GET /api/v1/admin/transactions
-              { id:"TXN-89231", who:"+91 98450•••42", listing:LISTINGS[0], method:"UPI", amount:6250, status:"completed", t:"2 min ago" },
-              { id:"TXN-89230", who:"+91 90000•••18", listing:LISTINGS[3], method:"Card", amount:9800, status:"completed", t:"14 min ago" },
-              { id:"TXN-89229", who:"+91 81234•••00", listing:LISTINGS[1], method:"UPI", amount:5200, status:"completed", t:"38 min ago" },
-              { id:"TXN-89228", who:"+91 78900•••11", listing:LISTINGS[5], method:"Card", amount:7400, status:"refunded", t:"1 h ago" },
-              { id:"TXN-89227", who:"+91 99860•••28", listing:LISTINGS[2], method:"NetBank", amount:8600, status:"completed", t:"1 h ago" },
-              { id:"TXN-89226", who:"+91 87543•••72", listing:LISTINGS[4], method:"UPI", amount:6250, status:"completed", t:"2 h ago" },
-            ].map((t)=>(
-              <tr key={t.id} style={{borderTop:'1px solid var(--border)'}}>
-                <td style={{padding:'14px 22px', fontFamily:'var(--f-mono)', fontSize:12, fontWeight:600}}>{t.id}</td>
-                <td style={{padding:'14px 22px', fontFamily:'var(--f-mono)', fontSize:12}}>{t.who}</td>
-                <td style={{padding:'14px 22px'}}>
-                  <div style={{fontWeight:600}}>{t.listing.bhk} BHK · {t.listing.locality}</div>
-                  <div style={{fontSize:11, color:'var(--text-muted)'}}>{t.t}</div>
-                </td>
-                <td style={{padding:'14px 22px', color:'var(--text-muted)'}}>{t.method}</td>
-                <td style={{padding:'14px 22px', fontWeight:700, fontVariantNumeric:'tabular-nums'}}>₹{t.amount.toLocaleString("en-IN")}</td>
-                <td style={{padding:'14px 22px'}}>
-                  {t.status === 'completed' ? <span style={{fontSize:11, color:'var(--success)', fontWeight:600}}>✓ Completed</span> : <span style={{fontSize:11, color:'var(--text-muted)', fontWeight:600}}>↺ Refunded</span>}
-                </td>
-              </tr>
-            ))}
+            {loadingRev && <tr><td colSpan={6} style={{padding:'28px', textAlign:'center', color:'var(--text-muted)'}}>Loading transactions…</td></tr>}
+            {!loadingRev && txns.length === 0 && (
+              <tr><td colSpan={6} style={{padding:'32px', textAlign:'center', color:'var(--text-muted)', fontSize:13}}>
+                No transactions yet. Once tenants unlock listings via PhonePe, they'll appear here.
+              </td></tr>
+            )}
+            {txns.map((t)=>{
+              const listing = normalizeApiListing(t.listing || {});
+              const clientEmail = t.client?.email || t.clientId || '—';
+              const amount = t.totalAmountInr || t.amount || 0;
+              const status = t.status === 'SUCCESS' ? 'completed' : t.status === 'REFUNDED' ? 'refunded' : 'pending';
+              const when = t.createdAt ? new Date(t.createdAt).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+              return (
+                <tr key={t.id} style={{borderTop:'1px solid var(--border)'}}>
+                  <td style={{padding:'14px 22px', fontFamily:'var(--f-mono)', fontSize:12, fontWeight:600}}>{(t.merchantTransactionId || t.id || '').slice(-8)}</td>
+                  <td style={{padding:'14px 22px', fontFamily:'var(--f-mono)', fontSize:12}}>{clientEmail}</td>
+                  <td style={{padding:'14px 22px'}}>
+                    <div style={{fontWeight:600}}>{listing.bhk ? `${listing.bhk} BHK · ${listing.locality}` : listing.locality || '—'}</div>
+                    <div style={{fontSize:11, color:'var(--text-muted)'}}>{when}</div>
+                  </td>
+                  <td style={{padding:'14px 22px', color:'var(--text-muted)'}}>UPI</td>
+                  <td style={{padding:'14px 22px', fontWeight:700, fontVariantNumeric:'tabular-nums'}}>₹{amount.toLocaleString('en-IN')}</td>
+                  <td style={{padding:'14px 22px'}}>
+                    {status === 'completed' ? <span style={{fontSize:11, color:'var(--success)', fontWeight:600}}>✓ Completed</span>
+                      : status === 'refunded' ? <span style={{fontSize:11, color:'var(--text-muted)', fontWeight:600}}>↺ Refunded</span>
+                      : <span style={{fontSize:11, color:'var(--warning)', fontWeight:600}}>⏳ Pending</span>}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -965,44 +998,4 @@ function CmsConfigTab() {
         <div style={{fontSize:13, color:'var(--text-muted)', marginTop:6, marginBottom:18}}>Roll features to subsets of users.</div>
         {[
           { f:"Multi-pack unlock (₹4,999 for 5)", on:false, sub:"Internal beta · 0.5%" },
-          { f:"Saved-search SMS alerts", on:true, sub:"All users" },
-          { f:"WhatsApp contact reveal", on:true, sub:"All users" },
-          { f:"AI listing description writer", on:false, sub:"Owners only · 10%" },
-          { f:"Virtual tours", on:true, sub:"Premium tier only" },
-        ].map(f=>(
-          <div key={f.f} style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid var(--border)'}}>
-            <div>
-              <div style={{fontSize:14, fontWeight:600}}>{f.f}</div>
-              <div style={{fontSize:11, color:'var(--text-muted)'}}>{f.sub}</div>
-            </div>
-            <Toggle on={f.on}/>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function Toggle({on:initial}) {
-  const [on, setOn] = useState(initial);
-  return (
-    <button onClick={()=>setOn(!on)} style={{
-      width:42, height:24, borderRadius:99,
-      background: on ? 'var(--brand-500)' : 'var(--border-strong)',
-      border:0, cursor:'pointer', position:'relative', flexShrink:0,
-      transition:'background .15s',
-    }}>
-      <div style={{
-        position:'absolute', top:2, left: on ? 20 : 2,
-        width:20, height:20, borderRadius:'50%', background:'#fff',
-        transition:'left .2s', boxShadow:'0 1px 3px rgba(0,0,0,.2)',
-      }}/>
-    </button>
-  );
-}
-
-// ---- info-pages.jsx ----
-// info-pages.jsx — About, FAQ, Contact
-
-
-export { AdminDashPage, AdminModPage, AdminUsersPage, AdminRevenuePage, AdminCmsPage, Legend };
+          { f:"Saved-search SMS alerts", on:true

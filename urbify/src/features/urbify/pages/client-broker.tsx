@@ -10,6 +10,7 @@ import {
   Icon, Logo, Img, LockedAddress, ListingCard, Modal,
   PortalShell, StatCard, StatusBadge, DashHeader,
 } from '../_shared';
+import { authFetch } from '@/lib/authFetch';
 
 // ---- client-broker-pages.jsx ----
 // client-broker-pages.jsx — Tenant/buyer dashboard + Broker portal
@@ -46,20 +47,31 @@ function ClientDashPage({nav}) {
 
   useEffect(() => {
     const token = localStorage.getItem('urb_access');
-    if (!token) return;
-    fetch('/api/v1/users/me/unlocks', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : [])
-      .then(data => setUnlocks(Array.isArray(data) ? data : (data.data || [])))
+    if (!token) { setLoadingUnlocks(false); return; }
+    authFetch('/api/v1/users/me/unlocks')
+      .then(r => r.ok ? r.json() : null)
+      .then(raw => {
+        // Unwrap interceptor envelope: {success, data:{data:[...], total,...}, timestamp}
+        const inner = raw?.data ?? raw;
+        const arr = Array.isArray(inner) ? inner : (inner?.data ?? []);
+        setUnlocks(Array.isArray(arr) ? arr : []);
+      })
       .catch(() => {})
       .finally(() => setLoadingUnlocks(false));
   }, []);
 
   const saved = ctxListings.filter(l => shortlistIds.includes(l.id));
-  const transactions = unlocks.map(u => ({
-    id: u.id,
-    listing: normalizeApiListing(u.listing || { id: u.listingId, title: 'Listing', locality: '', city: '', rentOrPrice: u.amountPaid }),
-    date: new Date(u.createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }),
-    amount: u.amountPaid,
+  const transactions = (unlocks || []).map(u => ({
+    id: u.id || '',
+    listing: normalizeApiListing(u.listing || {
+      id: u.listingId || '',
+      title: 'Unlocked listing',
+      locality: u.listing?.locality || '',
+      city: u.listing?.city || '',
+      rentOrPrice: u.totalAmountInr || 0,
+    }),
+    date: u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : '—',
+    amount: u.totalAmountInr || 0,
     status: u.status === 'SUCCESS' ? 'completed' : u.status === 'REFUNDED' ? 'refunded' : 'pending',
   }));
 
@@ -191,7 +203,7 @@ function BrokerDashPage({nav}) {
   useEffect(() => {
     const token = localStorage.getItem('urb_access');
     if (!token) return;
-    fetch('/api/v1/properties/my/listings', { headers: { Authorization: `Bearer ${token}` } })
+    authFetch('/api/v1/properties/my/listings')
       .then(r => r.ok ? r.json() : [])
       .then(data => {
         const arr = Array.isArray(data) ? data : (data.data || []);

@@ -195,6 +195,12 @@ function FaqPage({nav}) {
 // ─── CONTACT ──────────────────────────────────────────────────────────────
 function ContactPage({nav}) {
   const [topic, setTopic] = useState("general");
+  const { authUser } = useAppData();
+  const _fullName = authUser?.clientProfile?.fullName || authUser?.ownerProfile?.fullName || authUser?.brokerProfile?.fullName || '';
+  const _parts = _fullName.trim().split(' ');
+  const _firstName = _parts[0] || '';
+  const _lastName = _parts.slice(1).join(' ') || '';
+  const _email = authUser?.email || '';
   return (
     <div>
       <section style={{padding:'72px 28px 32px', maxWidth:1280, margin:'0 auto'}}>
@@ -216,11 +222,11 @@ function ContactPage({nav}) {
             <p className="muted" style={{margin:'6px 0 24px', fontSize:14}}>We'll reply to the email you provide.</p>
 
             <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:14}}>
-              <Field label="First name"><input className="input" defaultValue="Aanya"/></Field>
-              <Field label="Last name"><input className="input" defaultValue="Sharma"/></Field>
+              <Field label="First name"><input className="input" defaultValue={_firstName} placeholder="Your first name"/></Field>
+              <Field label="Last name"><input className="input" defaultValue={_lastName} placeholder="Your last name"/></Field>
             </div>
             <div style={{marginTop:14}}>
-              <Field label="Email"><input className="input" type="email" defaultValue="aanya@example.com"/></Field>
+              <Field label="Email"><input className="input" type="email" defaultValue={_email} placeholder="your@email.com"/></Field>
             </div>
             <div style={{marginTop:14}}>
               <Field label="Phone (optional)">

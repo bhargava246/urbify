@@ -36,4 +36,9 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsString()
   readonly reraId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  readonly avatarUrl?: string;
 }

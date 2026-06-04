@@ -37,17 +37,18 @@ export default function PaymentCallbackPage() {
           body: JSON.stringify({ merchantTransactionId: txnId }),
         });
 
-        const data = await res.json();
+        const raw = await res.json();
+        // API responses are wrapped: {success, data:{status,...}, timestamp}
+        const data = raw?.data ?? raw;
 
-        if (res.ok && data.status === "COMPLETED") {
+        if (res.ok && (data.status === "COMPLETED" || data.status === "SUCCESS")) {
           setState("success");
-          setMessage("Your contact unlock is active! Redirecting…");
-          // Give the user 3 s to read the message, then go to dashboard
-          setTimeout(() => router.replace("/"), 3000);
+          setMessage("Your contact unlock is active! Redirecting to your dashboard…");
+          setTimeout(() => router.replace("/dashboard"), 3000);
         } else {
           setState("failed");
           setMessage(
-            data.message ||
+            raw.message || data.message ||
               "Payment could not be confirmed. If money was deducted, it will be auto-refunded in 5-7 days."
           );
         }
