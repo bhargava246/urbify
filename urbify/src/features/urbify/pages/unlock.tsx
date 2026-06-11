@@ -411,4 +411,18 @@ function SuccessScreen({listing, nav}) {
           <button className="btn btn-outline btn-sm">Download</button>
         </div>
 
-        <div style={{marginTop:32, padding:18, background:'#FEF3C7', borderRadius:'v
+        <div style={{padding:18, background:'#FEF3C7', borderRadius:'var(--r-md)', display:'flex', alignItems:'flex-start', gap:14}}>
+          <div style={{fontSize:20}}>⚡</div>
+          <div>
+            <div style={{fontSize:13, fontWeight:700, color:'#78350F'}}>Refund guarantee</div>
+            <div style={{fontSize:12, color:'#92400E', marginTop:4, lineHeight:1.5}}>
+              If the address turns out to be invalid or the listing misrepresented, we refund 100% within 24 hours — no questions asked.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export { UnlockPage };

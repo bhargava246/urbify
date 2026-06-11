@@ -9,10 +9,7 @@ const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
 }/*EDITMODE-END*/;
 
 const PORTAL_PAGES = new Set([
-  'ownerDash','ownerList','ownerInquiries','ownerNew',
-  'clientDash','clientShort','clientTx','clientSearches',
-  'brokerDash','brokerList','brokerInq','brokerCommission',
-  'adminDash','adminMod','adminUsers','adminRev','adminCms',
+  'adminDash','adminMod','adminProperties','adminUsers','adminRev','adminCms',
   'settings',
 ]);
 
@@ -76,7 +73,7 @@ function App() {
           <a data-active={page==='pricing'} onClick={()=>nav('pricing')}>Pricing</a>
 
           <div style={{position:'relative'}}>
-            <a data-active={['about','faq','contact','ownerDash','clientDash','brokerDash','adminDash','auth'].includes(page)} onClick={()=>setMoreOpen(!moreOpen)}>
+            <a data-active={['about','faq','contact','adminDash','adminMod','adminProperties','adminUsers','adminRev','adminCms','auth'].includes(page)} onClick={()=>setMoreOpen(!moreOpen)}>
               More ▾
             </a>
             {moreOpen && (
@@ -96,11 +93,13 @@ function App() {
                   <MenuItem onClick={()=>nav('terms')}>Terms</MenuItem>
                   <MenuItem onClick={()=>nav('privacy')}>Privacy</MenuItem>
                 </MenuGroup>
-                <MenuGroup title="Portals">
-                  <MenuItem onClick={()=>nav('ownerDash')}>Owner</MenuItem>
-                  <MenuItem onClick={()=>nav('clientDash')}>Tenant</MenuItem>
-                  <MenuItem onClick={()=>nav('brokerDash')}>Broker</MenuItem>
-                  <MenuItem onClick={()=>nav('adminDash')}>Admin</MenuItem>
+                <MenuGroup title="Admin">
+                  <MenuItem onClick={()=>nav('adminDash')}>Overview</MenuItem>
+                  <MenuItem onClick={()=>nav('adminProperties')}>Properties</MenuItem>
+                  <MenuItem onClick={()=>nav('adminMod')}>Moderation</MenuItem>
+                  <MenuItem onClick={()=>nav('adminUsers')}>Users</MenuItem>
+                  <MenuItem onClick={()=>nav('adminRev')}>Revenue</MenuItem>
+                  <MenuItem onClick={()=>nav('adminCms')}>CMS / SEO</MenuItem>
                 </MenuGroup>
               </div>
             )}
@@ -111,8 +110,8 @@ function App() {
           <button className="btn btn-ghost btn-sm" onClick={()=>setMobileOpen(!mobileOpen)} aria-label="toggle mobile preview" title="View on mobile">
             <Icon.mobile/> {mobileOpen ? "Hide phone" : "Mobile"}
           </button>
-          <button className="btn btn-outline btn-sm" onClick={()=>nav('ownerNew')}>List for ₹0</button>
-          <button className="btn btn-primary btn-sm" onClick={()=>nav('auth')}>Sign in</button>
+          <button className="btn btn-outline btn-sm" onClick={()=>nav('adminProperties')}>Add property</button>
+          <button className="btn btn-primary btn-sm" onClick={()=>nav('adminDash')}>Admin panel</button>
         </div>
       </header>
 
@@ -128,20 +127,6 @@ function App() {
       {page === 'faq'            && <FaqPage    nav={nav}/>}
       {page === 'contact'        && <ContactPage nav={nav}/>}
 
-      {/* Owner */}
-      {page === 'ownerDash'      && <OwnerDashPage nav={nav}/>}
-      {page === 'ownerList'      && <OwnerListPage nav={nav}/>}
-      {page === 'ownerInquiries' && <OwnerInquiriesPage nav={nav}/>}
-      {page === 'ownerNew'       && <OwnerNewPage nav={nav}/>}
-
-      {/* Client */}
-      {(page === 'clientDash' || page === 'clientShort' || page === 'clientSearches') && <ClientDashPage nav={nav}/>}
-      {page === 'clientTx' && <ClientTxPage nav={nav}/>}
-
-      {/* Broker */}
-      {(page === 'brokerDash' || page === 'brokerInq' || page === 'brokerCommission') && <BrokerDashPage nav={nav}/>}
-      {page === 'brokerList' && <BrokerPortfolioPage nav={nav}/>}
-
       {/* City / locality landings */}
       {page === 'city'     && <CityPage     nav={nav} savedIds={savedIds} onSave={toggleSave} onUnlock={handleUnlock}/>}
       {page === 'locality' && <LocalityPage nav={nav} savedIds={savedIds} onSave={toggleSave} onUnlock={handleUnlock}/>}
@@ -151,11 +136,12 @@ function App() {
       {page === 'blogPost' && <BlogPostPage nav={nav}/>}
 
       {/* Admin */}
-      {page === 'adminDash'  && <AdminDashPage nav={nav}/>}
-      {page === 'adminMod'   && <AdminModPage nav={nav}/>}
-      {page === 'adminUsers' && <AdminUsersPage nav={nav}/>}
-      {page === 'adminRev'   && <AdminRevenuePage nav={nav}/>}
-      {page === 'adminCms'   && <AdminCmsPage nav={nav}/>}
+      {page === 'adminDash'       && <AdminDashPage nav={nav}/>}
+      {page === 'adminMod'        && <AdminModPage nav={nav}/>}
+      {page === 'adminProperties' && <AdminPropertiesPage nav={nav}/>}
+      {page === 'adminUsers'      && <AdminUsersPage nav={nav}/>}
+      {page === 'adminRev'        && <AdminRevenuePage nav={nav}/>}
+      {page === 'adminCms'        && <AdminCmsPage nav={nav}/>}
 
       {/* Settings, Help, 404 */}
       {page === 'settings' && <SettingsPage nav={nav}/>}
@@ -216,26 +202,6 @@ function App() {
           {p:'blogPost', l:'Blog post'},
         ]}/>
 
-        <TweakSection label="Owner"/>
-        <PageGrid current={page} onNav={nav} pages={[
-          {p:'ownerDash', l:'Dashboard'},
-          {p:'ownerList', l:'Listings'},
-          {p:'ownerInquiries', l:'Inquiries'},
-          {p:'ownerNew', l:'New listing'},
-        ]}/>
-
-        <TweakSection label="Tenant"/>
-        <PageGrid current={page} onNav={nav} pages={[
-          {p:'clientDash', l:'Dashboard'},
-          {p:'clientTx', l:'Transactions'},
-        ]}/>
-
-        <TweakSection label="Broker"/>
-        <PageGrid current={page} onNav={nav} pages={[
-          {p:'brokerDash', l:'Dashboard'},
-          {p:'brokerList', l:'Portfolio'},
-        ]}/>
-
         <TweakSection label="Account"/>
         <PageGrid current={page} onNav={nav} pages={[
           {p:'settings', l:'Settings'},
@@ -254,11 +220,12 @@ function App() {
 
         <TweakSection label="Admin"/>
         <PageGrid current={page} onNav={nav} pages={[
-          {p:'adminDash', l:'Overview'},
-          {p:'adminMod', l:'Moderation'},
-          {p:'adminUsers', l:'Users'},
-          {p:'adminRev', l:'Revenue'},
-          {p:'adminCms', l:'CMS'},
+          {p:'adminDash',       l:'Overview'},
+          {p:'adminMod',        l:'Moderation'},
+          {p:'adminProperties', l:'Properties'},
+          {p:'adminUsers',      l:'Users'},
+          {p:'adminRev',        l:'Revenue'},
+          {p:'adminCms',        l:'CMS'},
         ]}/>
       </TweaksPanel>
     </div>

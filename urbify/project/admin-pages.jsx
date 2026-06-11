@@ -3,11 +3,12 @@
 const ADMIN_USER = { initials:"OM", name:"Ops · Maya", role:"Admin · L2", color:'#7C3AED' };
 
 const ADMIN_NAV = () => [
-  { id:'adminDash', label:'Overview', icon:'◧' },
-  { id:'adminMod',  label:'Moderation', icon:'⌗', badge:'14', badgeTone:'danger' },
-  { id:'adminUsers', label:'Users', icon:'◐' },
-  { id:'adminRev',   label:'Revenue', icon:'₹' },
-  { id:'adminCms',   label:'CMS / SEO', icon:'✍' },
+  { id:'adminDash',       label:'Overview',    icon:'◧' },
+  { id:'adminMod',        label:'Moderation',  icon:'⌗', badge:'14', badgeTone:'danger' },
+  { id:'adminProperties', label:'Properties',  icon:'⊞' },
+  { id:'adminUsers',      label:'Users',       icon:'◐' },
+  { id:'adminRev',        label:'Revenue',     icon:'₹' },
+  { id:'adminCms',        label:'CMS / SEO',   icon:'✍' },
   { divider:'system' },
   { id:'settings', label:'Settings', icon:'⚙' },
   { id:'home', label:'Back to site', icon:'↗' },
@@ -308,4 +309,4 @@ function AdminModPage({nav}) {
   );
 }
 
-Object.assign(window, { AdminDashPage, AdminModPage });
+Object.assign(window, { AdminDashPage, AdminModPage, ADMIN_USER, ADMIN_NAV });

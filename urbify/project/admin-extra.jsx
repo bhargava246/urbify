@@ -579,4 +579,709 @@ function Toggle({on:initial}) {
   );
 }
 
-Object.assign(window, { AdminUsersPage, AdminRevenuePage, AdminCmsPage });
+// ─── ADMIN PROPERTIES ─────────────────────────────────────────────────────
+const ADMIN_PROPERTIES_INIT = LISTINGS.slice(0, 12).map((l, i) => ({
+  ...l,
+  status: ['live','live','live','pending','live','live','rejected','live','live','pending','live','live'][i],
+  addedBy: ['Vikram K.','Admin','Anita R.','Rohit M.','Admin','Priya S.','Admin','Karan T.','Admin','Manish J.','Admin','Dhruv N.'][i],
+  addedOn: ['Nov 1','Nov 3','Nov 5','Nov 6','Nov 7','Nov 8','Nov 9','Nov 10','Nov 11','Nov 12','Nov 13','Nov 14'][i],
+  propertyType: ['Apartment','Apartment','Villa','Apartment','PG','Apartment','Apartment','Villa','Apartment','Apartment','Studio','Apartment'][i],
+}));
+
+const EMPTY_FORM = {
+  title:'', propertyType:'Apartment', city:'Bangalore', locality:'',
+  bhk:'2', area:'', floor:'', totalFloors:'', furnishing:'Semi-furnished',
+  facing:'East', rent:'', deposit:'', listingType:'rent',
+  ownerName:'', ownerPhone:'', ownerEmail:'',
+  description:'', amenities:[], photos:['','',''],
+  status:'pending',
+};
+
+function AdminPropertiesPage({nav}) {
+  const [properties, setProperties] = useState(ADMIN_PROPERTIES_INIT);
+  const [search, setSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterType, setFilterType] = useState('all');
+  const [filterCity, setFilterCity] = useState('all');
+  const [showModal, setShowModal] = useState(false);
+  const [editProp, setEditProp] = useState(null); // null = add, obj = edit
+  const [viewProp, setViewProp] = useState(null);
+  const [page, setPage] = useState(1);
+  const PER_PAGE = 8;
+
+  const filtered = properties.filter(p => {
+    const q = search.toLowerCase();
+    if (q && !p.title.toLowerCase().includes(q) && !p.locality.toLowerCase().includes(q) && !p.city.toLowerCase().includes(q)) return false;
+    if (filterStatus !== 'all' && p.status !== filterStatus) return false;
+    if (filterType !== 'all' && p.propertyType !== filterType) return false;
+    if (filterCity !== 'all' && p.city !== filterCity) return false;
+    return true;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  const paginated = filtered.slice((page-1)*PER_PAGE, page*PER_PAGE);
+
+  const openAdd = () => { setEditProp(null); setShowModal(true); };
+  const openEdit = (p) => { setEditProp(p); setShowModal(true); };
+
+  const handleSave = (data) => {
+    if (editProp) {
+      setProperties(ps => ps.map(p => p.id === editProp.id ? {...p, ...data} : p));
+    } else {
+      const newId = `URB-${2000 + properties.length}`;
+      setProperties(ps => [{
+        ...data, id: newId,
+        photo: data.photos[0] || PHOTOS[0],
+        photos: data.photos.filter(Boolean).length ? data.photos.filter(Boolean) : [PHOTOS[0],PHOTOS[1],PHOTOS[2]],
+        rentK: parseInt(data.rent) || 0,
+        area: parseInt(data.area) || 0,
+        floor: parseInt(data.floor) || 1,
+        total: parseInt(data.totalFloors) || 10,
+        addedBy: 'Admin',
+        addedOn: 'Just now',
+        isBroker: false,
+        fee: 0, feeGST: 0,
+        amenityIds: data.amenities,
+      }, ...ps]);
+    }
+    setShowModal(false);
+  };
+
+  const handleStatusChange = (id, status) => {
+    setProperties(ps => ps.map(p => p.id === id ? {...p, status} : p));
+  };
+
+  const handleDelete = (id) => {
+    setProperties(ps => ps.filter(p => p.id !== id));
+  };
+
+  return (
+    <PortalShell user={ADMIN_USER} navItems={ADMIN_NAV()} current="adminProperties" onNav={(id)=>nav(id)}>
+      <DashHeader title="Properties"
+        subtitle={`${properties.length.toLocaleString()} total · ${properties.filter(p=>p.status==='pending').length} pending review`}
+        actions={
+          <>
+            <button className="btn btn-outline btn-sm"><Icon.download/> Export</button>
+            <button className="btn btn-brand btn-sm" onClick={openAdd}>＋ Add property</button>
+          </>
+        }/>
+
+      {/* Stats row */}
+      <div style={{display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14, marginBottom:24}}>
+        {[
+          {label:'Total listings', value: properties.length.toLocaleString(), color:'var(--brand-500)'},
+          {label:'Live', value: properties.filter(p=>p.status==='live').length, color:'var(--success)'},
+          {label:'Pending', value: properties.filter(p=>p.status==='pending').length, color:'var(--warning)'},
+          {label:'Rejected', value: properties.filter(p=>p.status==='rejected').length, color:'var(--error)'},
+        ].map(s=>(
+          <div key={s.label} className="card" style={{padding:'18px 22px', display:'flex', alignItems:'center', gap:14}}>
+            <div style={{width:10, height:10, borderRadius:99, background:s.color, flexShrink:0}}/>
+            <div>
+              <div style={{fontSize:26, fontWeight:800, letterSpacing:'-0.03em', lineHeight:1}}>{s.value}</div>
+              <div style={{fontSize:11, color:'var(--text-muted)', marginTop:4}}>{s.label}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="card" style={{padding:'14px 18px', display:'flex', alignItems:'center', gap:12, marginBottom:16, flexWrap:'wrap'}}>
+        <div style={{display:'flex', alignItems:'center', gap:8, padding:'0 12px', background:'var(--surface-sunken)', borderRadius:'var(--r-sm)', height:36, flex:'1 1 260px', maxWidth:320}}>
+          <Icon.search/>
+          <input value={search} onChange={e=>{setSearch(e.target.value); setPage(1);}}
+            className="input" placeholder="Search title, city, locality…"
+            style={{border:0, background:'transparent', padding:0, height:'auto', flex:1, fontSize:13}}/>
+        </div>
+        <select className="input select" style={{height:36, fontSize:12}} value={filterStatus} onChange={e=>{setFilterStatus(e.target.value); setPage(1);}}>
+          <option value="all">Any status</option>
+          <option value="live">Live</option>
+          <option value="pending">Pending</option>
+          <option value="rejected">Rejected</option>
+        </select>
+        <select className="input select" style={{height:36, fontSize:12}} value={filterType} onChange={e=>{setFilterType(e.target.value); setPage(1);}}>
+          <option value="all">Any type</option>
+          <option value="Apartment">Apartment</option>
+          <option value="Villa">Villa</option>
+          <option value="Studio">Studio</option>
+          <option value="PG">PG / Co-living</option>
+          <option value="Office">Office</option>
+        </select>
+        <select className="input select" style={{height:36, fontSize:12}} value={filterCity} onChange={e=>{setFilterCity(e.target.value); setPage(1);}}>
+          <option value="all">All cities</option>
+          {CITIES.map(c=><option key={c.name} value={c.name}>{c.name}</option>)}
+        </select>
+        <div style={{marginLeft:'auto', fontSize:12, color:'var(--text-muted)'}}>
+          {filtered.length} result{filtered.length !== 1 ? 's' : ''}
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="card" style={{padding:0, overflow:'hidden', marginBottom:16}}>
+        <table style={{width:'100%', borderCollapse:'collapse', fontSize:13}}>
+          <thead style={{background:'var(--surface-sunken)'}}>
+            <tr style={{textAlign:'left', color:'var(--text-muted)', fontSize:11, textTransform:'uppercase', letterSpacing:'.08em', fontWeight:600}}>
+              <th style={{padding:'12px 20px'}}>Property</th>
+              <th style={{padding:'12px 16px'}}>Type</th>
+              <th style={{padding:'12px 16px'}}>City</th>
+              <th style={{padding:'12px 16px'}}>Rent</th>
+              <th style={{padding:'12px 16px'}}>Area</th>
+              <th style={{padding:'12px 16px'}}>Added by</th>
+              <th style={{padding:'12px 16px'}}>Status</th>
+              <th style={{padding:'12px 20px', textAlign:'right'}}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paginated.length === 0 && (
+              <tr><td colSpan={8} style={{padding:'48px 20px', textAlign:'center', color:'var(--text-muted)', fontSize:14}}>No properties match your filters.</td></tr>
+            )}
+            {paginated.map((p,i)=>(
+              <tr key={p.id} style={{borderTop:'1px solid var(--border)'}}>
+                <td style={{padding:'14px 20px'}}>
+                  <div style={{display:'flex', alignItems:'center', gap:12}}>
+                    <Img src={p.photo} style={{width:52, height:52, borderRadius:'var(--r-sm)', flexShrink:0}}/>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontWeight:600, fontSize:13, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:220}}>
+                        {p.bhk} BHK · {p.locality}
+                      </div>
+                      <div style={{fontSize:11, color:'var(--text-muted)', fontFamily:'var(--f-mono)', marginTop:2}}>{p.id}</div>
+                      <div style={{fontSize:11, color:'var(--text-muted)', marginTop:1}}>{p.furnishing}</div>
+                    </div>
+                  </div>
+                </td>
+                <td style={{padding:'14px 16px', color:'var(--text-muted)'}}>{p.propertyType || 'Apartment'}</td>
+                <td style={{padding:'14px 16px'}}><span style={{fontWeight:500}}>{p.city}</span></td>
+                <td style={{padding:'14px 16px', fontWeight:700, fontVariantNumeric:'tabular-nums'}}>₹{p.rentK}k</td>
+                <td style={{padding:'14px 16px', color:'var(--text-muted)', fontVariantNumeric:'tabular-nums'}}>{p.area.toLocaleString('en-IN')} sqft</td>
+                <td style={{padding:'14px 16px'}}>
+                  <div style={{fontSize:12}}>{p.addedBy}</div>
+                  <div style={{fontSize:10, color:'var(--text-faint)'}}>{p.addedOn}</div>
+                </td>
+                <td style={{padding:'14px 16px'}}>
+                  <select
+                    value={p.status}
+                    onChange={e=>handleStatusChange(p.id, e.target.value)}
+                    style={{
+                      fontSize:11, fontWeight:600, padding:'4px 8px', borderRadius:99,
+                      border:'1.5px solid',
+                      borderColor: p.status==='live' ? 'var(--success)' : p.status==='pending' ? 'var(--warning)' : 'var(--error)',
+                      color: p.status==='live' ? 'var(--success)' : p.status==='pending' ? 'var(--warning)' : 'var(--error)',
+                      background:'transparent', cursor:'pointer',
+                    }}>
+                    <option value="live">● Live</option>
+                    <option value="pending">○ Pending</option>
+                    <option value="rejected">✕ Rejected</option>
+                  </select>
+                </td>
+                <td style={{padding:'14px 20px', textAlign:'right'}}>
+                  <div style={{display:'inline-flex', gap:4}}>
+                    <button className="btn btn-ghost btn-sm" onClick={()=>setViewProp(p)}>View</button>
+                    <button className="btn btn-outline btn-sm" onClick={()=>openEdit(p)}>Edit</button>
+                    <button className="btn btn-ghost btn-sm" style={{color:'var(--error)'}} onClick={()=>handleDelete(p.id)}>✕</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {/* Pagination */}
+        <div style={{padding:'12px 20px', borderTop:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:12, color:'var(--text-muted)'}}>
+          <span>Page {page} of {totalPages} · {filtered.length} properties</span>
+          <div style={{display:'flex', gap:6}}>
+            <button className="btn btn-outline btn-sm" disabled={page===1} onClick={()=>setPage(p=>p-1)}>← Prev</button>
+            {Array.from({length:Math.min(5,totalPages)}).map((_,i)=>{
+              const pg = i+1;
+              return <button key={pg} className={page===pg?"btn btn-brand btn-sm":"btn btn-ghost btn-sm"} onClick={()=>setPage(pg)}>{pg}</button>;
+            })}
+            <button className="btn btn-outline btn-sm" disabled={page>=totalPages} onClick={()=>setPage(p=>p+1)}>Next →</button>
+          </div>
+        </div>
+      </div>
+
+      {/* Add/Edit Modal */}
+      {showModal && (
+        <PropertyFormModal
+          initial={editProp}
+          onSave={handleSave}
+          onClose={()=>setShowModal(false)}
+        />
+      )}
+
+      {/* View Modal */}
+      {viewProp && (
+        <PropertyViewModal prop={viewProp} onClose={()=>setViewProp(null)} onEdit={()=>{setViewProp(null); openEdit(viewProp);}}/>
+      )}
+    </PortalShell>
+  );
+}
+
+// ─── Property Form Modal ─────────────────────────────────────────────────
+function PropertyFormModal({initial, onSave, onClose}) {
+  const isEdit = !!initial;
+  const [step, setStep] = useState(1);
+  const TOTAL_STEPS = 4;
+
+  const [form, setForm] = useState(() => initial ? {
+    title: initial.title || '',
+    propertyType: initial.propertyType || 'Apartment',
+    city: initial.city || 'Bangalore',
+    locality: initial.locality || '',
+    bhk: String(initial.bhk || '2'),
+    area: String(initial.area || ''),
+    floor: String(initial.floor || ''),
+    totalFloors: String(initial.total || ''),
+    furnishing: initial.furnishing || 'Semi-furnished',
+    facing: initial.facing || 'East',
+    rent: String(initial.rentK ? initial.rentK * 1000 : ''),
+    deposit: String(initial.rentK ? initial.rentK * 2000 : ''),
+    listingType: 'rent',
+    ownerName: '', ownerPhone: '', ownerEmail: '',
+    description: initial.description || '',
+    amenities: initial.amenityIds || [],
+    photos: initial.photos ? [...initial.photos.slice(0,3), ...Array(3).fill('')].slice(0,3) : ['','',''],
+    status: initial.status || 'pending',
+  } : {...EMPTY_FORM});
+
+  const set = (k, v) => setForm(f => ({...f, [k]: v}));
+  const toggleAmenity = (id) => set('amenities', form.amenities.includes(id) ? form.amenities.filter(a=>a!==id) : [...form.amenities, id]);
+
+  const stepTitles = ['Basic info', 'Location & specs', 'Owner & pricing', 'Photos & publish'];
+
+  const canNext = () => {
+    if (step === 1) return form.propertyType && form.city && form.locality && form.bhk;
+    if (step === 2) return form.area && form.floor && form.totalFloors;
+    if (step === 3) return form.rent;
+    return true;
+  };
+
+  const handleSubmit = () => {
+    onSave({
+      ...form,
+      bhk: parseInt(form.bhk) || 2,
+      area: parseInt(form.area) || 0,
+      floor: parseInt(form.floor) || 1,
+      total: parseInt(form.totalFloors) || 10,
+      rentK: Math.round((parseInt(form.rent) || 0) / 1000),
+      photos: form.photos.filter(Boolean).length ? form.photos.filter(Boolean) : [PHOTOS[0]],
+      photo: form.photos.filter(Boolean)[0] || PHOTOS[0],
+      title: form.title || `${form.bhk} BHK ${form.propertyType} in ${form.locality}`,
+    });
+  };
+
+  return (
+    <div style={{
+      position:'fixed', inset:0, zIndex:200,
+      background:'rgba(0,0,0,.55)', backdropFilter:'blur(4px)',
+      display:'flex', alignItems:'center', justifyContent:'center', padding:24,
+    }} onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
+      <div style={{
+        background:'var(--surface)', borderRadius:'var(--r-lg)', width:'100%', maxWidth:680,
+        maxHeight:'90vh', overflow:'hidden', display:'flex', flexDirection:'column',
+        boxShadow:'var(--sh-pop)',
+      }}>
+        {/* Header */}
+        <div style={{padding:'22px 28px 18px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0}}>
+          <div>
+            <div style={{fontSize:20, fontWeight:800, letterSpacing:'-0.025em'}}>{isEdit ? 'Edit property' : 'Add new property'}</div>
+            <div style={{fontSize:12, color:'var(--text-muted)', marginTop:4}}>Step {step} of {TOTAL_STEPS} · {stepTitles[step-1]}</div>
+          </div>
+          <button onClick={onClose} style={{background:'var(--surface-sunken)', border:0, borderRadius:'50%', width:34, height:34, cursor:'pointer', fontSize:16, display:'grid', placeItems:'center'}}>✕</button>
+        </div>
+
+        {/* Progress bar */}
+        <div style={{height:4, background:'var(--surface-sunken)', flexShrink:0}}>
+          <div style={{height:'100%', width:`${(step/TOTAL_STEPS)*100}%`, background:'var(--brand-500)', transition:'width .3s', borderRadius:99}}/>
+        </div>
+
+        {/* Step indicators */}
+        <div style={{padding:'14px 28px', borderBottom:'1px solid var(--border)', display:'flex', gap:6, flexShrink:0}}>
+          {stepTitles.map((t,i)=>(
+            <div key={i} onClick={()=>{ if(i+1 < step) setStep(i+1); }} style={{
+              display:'flex', alignItems:'center', gap:8, fontSize:12, fontWeight:600,
+              color: step===i+1 ? 'var(--text)' : step>i+1 ? 'var(--success)' : 'var(--text-faint)',
+              cursor: i+1 < step ? 'pointer' : 'default',
+            }}>
+              <div style={{
+                width:22, height:22, borderRadius:'50%', display:'grid', placeItems:'center', fontSize:10, fontWeight:700,
+                background: step===i+1 ? 'var(--brand-500)' : step>i+1 ? 'var(--success)' : 'var(--surface-sunken)',
+                color: step===i+1 || step>i+1 ? '#fff' : 'var(--text-muted)',
+              }}>{step>i+1 ? '✓' : i+1}</div>
+              <span style={{display: i < stepTitles.length-1 ? undefined : undefined}}>{t}</span>
+              {i < stepTitles.length-1 && <span style={{color:'var(--border-strong)', fontWeight:400, marginLeft:2}}>›</span>}
+            </div>
+          ))}
+        </div>
+
+        {/* Body */}
+        <div style={{flex:1, overflowY:'auto', padding:'24px 28px'}}>
+
+          {/* ── Step 1: Basic Info ── */}
+          {step === 1 && (
+            <div style={{display:'flex', flexDirection:'column', gap:18}}>
+              <Field label="Property type">
+                <div style={{display:'flex', flexWrap:'wrap', gap:8}}>
+                  {['Apartment','Villa','Studio','PG / Co-living','Office','Plot'].map(t=>(
+                    <button key={t} onClick={()=>set('propertyType', t==='PG / Co-living'?'PG':t)}
+                      style={{
+                        padding:'7px 14px', borderRadius:99, fontSize:12, fontWeight:600, cursor:'pointer',
+                        border:'1.5px solid', borderColor: form.propertyType===(t==='PG / Co-living'?'PG':t)?'var(--text)':'var(--border)',
+                        background: form.propertyType===(t==='PG / Co-living'?'PG':t)?'var(--text)':'transparent',
+                        color: form.propertyType===(t==='PG / Co-living'?'PG':t)?'var(--bg)':'var(--text)',
+                      }}>{t}</button>
+                  ))}
+                </div>
+              </Field>
+
+              <Field label="Listing type">
+                <div style={{display:'flex', gap:8}}>
+                  {[{v:'rent',l:'For Rent'},{v:'sale',l:'For Sale'},{v:'pg',l:'PG / Hostel'}].map(t=>(
+                    <button key={t.v} onClick={()=>set('listingType',t.v)}
+                      style={{
+                        padding:'7px 18px', borderRadius:99, fontSize:12, fontWeight:600, cursor:'pointer',
+                        border:'1.5px solid', borderColor: form.listingType===t.v?'var(--text)':'var(--border)',
+                        background: form.listingType===t.v?'var(--text)':'transparent',
+                        color: form.listingType===t.v?'var(--bg)':'var(--text)',
+                      }}>{t.l}</button>
+                  ))}
+                </div>
+              </Field>
+
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:14}}>
+                <Field label="BHK / configuration">
+                  <select className="input" value={form.bhk} onChange={e=>set('bhk',e.target.value)}>
+                    {['1','2','3','4','5','6'].map(v=><option key={v} value={v}>{v} BHK</option>)}
+                  </select>
+                </Field>
+                <Field label="Furnishing">
+                  <select className="input" value={form.furnishing} onChange={e=>set('furnishing',e.target.value)}>
+                    {FURNISHING.map(f=><option key={f}>{f}</option>)}
+                  </select>
+                </Field>
+              </div>
+
+              <Field label="Custom title (optional)">
+                <input className="input" placeholder={`e.g. ${form.bhk} BHK Apartment in Koramangala`}
+                  value={form.title} onChange={e=>set('title',e.target.value)}/>
+                <div style={{fontSize:11, color:'var(--text-faint)', marginTop:6}}>Auto-generated if left blank.</div>
+              </Field>
+
+              <Field label="Description">
+                <textarea className="input" rows={4}
+                  placeholder="Describe the property — highlights, nearby landmarks, special features…"
+                  value={form.description} onChange={e=>set('description',e.target.value)}
+                  style={{resize:'vertical', fontFamily:'var(--f-body)', lineHeight:1.6}}/>
+              </Field>
+            </div>
+          )}
+
+          {/* ── Step 2: Location & Specs ── */}
+          {step === 2 && (
+            <div style={{display:'flex', flexDirection:'column', gap:18}}>
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:14}}>
+                <Field label="City *">
+                  <select className="input" value={form.city} onChange={e=>set('city',e.target.value)}>
+                    {CITIES.map(c=><option key={c.name}>{c.name}</option>)}
+                  </select>
+                </Field>
+                <Field label="Locality / area *">
+                  <input className="input" placeholder="e.g. Koramangala, HSR Layout"
+                    value={form.locality} onChange={e=>set('locality',e.target.value)}
+                    list="locality-options"/>
+                  <datalist id="locality-options">
+                    {LOCALITIES.map(l=><option key={l} value={l}/>)}
+                  </datalist>
+                </Field>
+              </div>
+
+              <Field label="Full address (admin only — hidden from tenants)">
+                <input className="input" placeholder="Building / flat no., street, pincode"
+                  value={form.address || ''} onChange={e=>set('address',e.target.value)}/>
+              </Field>
+
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:14}}>
+                <Field label="Carpet area (sqft) *">
+                  <input className="input" type="number" placeholder="e.g. 850"
+                    value={form.area} onChange={e=>set('area',e.target.value)}/>
+                </Field>
+                <Field label="Floor *">
+                  <input className="input" type="number" placeholder="e.g. 4"
+                    value={form.floor} onChange={e=>set('floor',e.target.value)}/>
+                </Field>
+                <Field label="Total floors *">
+                  <input className="input" type="number" placeholder="e.g. 12"
+                    value={form.totalFloors} onChange={e=>set('totalFloors',e.target.value)}/>
+                </Field>
+              </div>
+
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:14}}>
+                <Field label="Facing">
+                  <select className="input" value={form.facing} onChange={e=>set('facing',e.target.value)}>
+                    {FACINGS.map(f=><option key={f}>{f}</option>)}
+                  </select>
+                </Field>
+                <Field label="Available from">
+                  <input className="input" type="date" value={form.availableFrom || ''} onChange={e=>set('availableFrom',e.target.value)}/>
+                </Field>
+              </div>
+
+              <Field label="Amenities">
+                <div style={{display:'flex', flexWrap:'wrap', gap:8, marginTop:4}}>
+                  {AMENITIES.map(a=>(
+                    <button key={a.id} onClick={()=>toggleAmenity(a.id)}
+                      style={{
+                        padding:'6px 14px', borderRadius:99, fontSize:12, fontWeight:600, cursor:'pointer',
+                        border:'1.5px solid', borderColor: form.amenities.includes(a.id)?'var(--brand-500)':'var(--border)',
+                        background: form.amenities.includes(a.id)?'var(--brand-50)':'transparent',
+                        color: form.amenities.includes(a.id)?'var(--brand-700)':'var(--text-muted)',
+                      }}>{form.amenities.includes(a.id)?'✓ ':''}{a.label}</button>
+                  ))}
+                </div>
+              </Field>
+            </div>
+          )}
+
+          {/* ── Step 3: Owner & Pricing ── */}
+          {step === 3 && (
+            <div style={{display:'flex', flexDirection:'column', gap:18}}>
+              <div style={{padding:'14px 18px', borderRadius:'var(--r-md)', background:'var(--surface-sunken)', fontSize:13, color:'var(--text-muted)', lineHeight:1.6}}>
+                Owner details are kept private. Tenants only see the locality until they pay to unlock.
+              </div>
+
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:14}}>
+                <Field label="Owner full name">
+                  <input className="input" placeholder="e.g. Rajesh Kumar"
+                    value={form.ownerName} onChange={e=>set('ownerName',e.target.value)}/>
+                </Field>
+                <Field label="Owner phone">
+                  <input className="input" placeholder="+91 98765 43210"
+                    value={form.ownerPhone} onChange={e=>set('ownerPhone',e.target.value)}/>
+                </Field>
+              </div>
+
+              <Field label="Owner email (optional)">
+                <input className="input" type="email" placeholder="owner@example.com"
+                  value={form.ownerEmail} onChange={e=>set('ownerEmail',e.target.value)}/>
+              </Field>
+
+              <div style={{borderTop:'1px solid var(--border)', paddingTop:18}}>
+                <div style={{fontSize:13, fontWeight:700, marginBottom:14}}>Pricing</div>
+                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:14}}>
+                  <Field label="Monthly rent (₹) *">
+                    <div style={{display:'flex', alignItems:'center', gap:0}}>
+                      <span style={{padding:'0 12px', height:40, lineHeight:'40px', background:'var(--surface-sunken)', border:'1px solid var(--border)', borderRight:0, borderRadius:'var(--r-sm) 0 0 var(--r-sm)', fontSize:13, color:'var(--text-muted)'}}>₹</span>
+                      <input className="input" type="number" placeholder="45000"
+                        value={form.rent} onChange={e=>set('rent',e.target.value)}
+                        style={{borderRadius:'0 var(--r-sm) var(--r-sm) 0'}}/>
+                    </div>
+                  </Field>
+                  <Field label="Security deposit (₹)">
+                    <div style={{display:'flex', alignItems:'center', gap:0}}>
+                      <span style={{padding:'0 12px', height:40, lineHeight:'40px', background:'var(--surface-sunken)', border:'1px solid var(--border)', borderRight:0, borderRadius:'var(--r-sm) 0 0 var(--r-sm)', fontSize:13, color:'var(--text-muted)'}}>₹</span>
+                      <input className="input" type="number" placeholder="90000"
+                        value={form.deposit} onChange={e=>set('deposit',e.target.value)}
+                        style={{borderRadius:'0 var(--r-sm) var(--r-sm) 0'}}/>
+                    </div>
+                  </Field>
+                </div>
+              </div>
+
+              {form.rent && (
+                <div style={{padding:'14px 18px', borderRadius:'var(--r-md)', background:'var(--brand-50)', border:'1px solid var(--brand-500)', fontSize:12}}>
+                  <div style={{fontWeight:700, color:'var(--brand-700)', marginBottom:8}}>Platform fee estimate</div>
+                  <div style={{display:'flex', gap:24}}>
+                    <div><span style={{color:'var(--text-muted)'}}>Unlock fee:</span> <strong>₹{Math.round((parseInt(form.rent)||0)/30*7.5).toLocaleString('en-IN')}</strong></div>
+                    <div><span style={{color:'var(--text-muted)'}}>incl. GST:</span> <strong>₹{Math.round((parseInt(form.rent)||0)/30*7.5*1.18).toLocaleString('en-IN')}</strong></div>
+                    <div><span style={{color:'var(--text-muted)'}}>Deposit shown:</span> <strong>₹{parseInt(form.deposit||0).toLocaleString('en-IN') || '—'}</strong></div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Step 4: Photos & Publish ── */}
+          {step === 4 && (
+            <div style={{display:'flex', flexDirection:'column', gap:18}}>
+              <Field label="Photo URLs (paste image links — at least 1 required)">
+                <div style={{display:'flex', flexDirection:'column', gap:10}}>
+                  {form.photos.map((url,i)=>(
+                    <div key={i} style={{display:'flex', gap:10, alignItems:'flex-start'}}>
+                      <div style={{flex:1}}>
+                        <input className="input" placeholder={`Photo ${i+1} URL — https://…`}
+                          value={url} onChange={e=>{
+                            const p = [...form.photos]; p[i] = e.target.value; set('photos',p);
+                          }}/>
+                      </div>
+                      {url && (
+                        <div style={{width:52, height:52, borderRadius:'var(--r-sm)', overflow:'hidden', flexShrink:0, border:'1px solid var(--border)'}}>
+                          <img src={url} alt="" style={{width:'100%', height:'100%', objectFit:'cover'}}
+                            onError={e=>{ e.currentTarget.style.opacity='.2'; }}/>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  <button className="btn btn-ghost btn-sm" style={{alignSelf:'flex-start'}}
+                    onClick={()=>set('photos',[...form.photos,''])}>
+                    + Add another photo
+                  </button>
+                </div>
+              </Field>
+
+              {form.photos.filter(Boolean).length > 0 && (
+                <div>
+                  <div style={{fontSize:12, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.08em', marginBottom:10}}>Preview</div>
+                  <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8}}>
+                    {form.photos.filter(Boolean).slice(0,6).map((url,i)=>(
+                      <div key={i} style={{aspectRatio:'4/3', borderRadius:'var(--r-sm)', overflow:'hidden', background:'var(--surface-sunken)'}}>
+                        <img src={url} alt="" style={{width:'100%', height:'100%', objectFit:'cover'}}/>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Field label="Initial status">
+                <div style={{display:'flex', gap:8}}>
+                  {[{v:'pending',l:'Pending review'},{v:'live',l:'Publish immediately'},{v:'rejected',l:'Rejected'}].map(s=>(
+                    <button key={s.v} onClick={()=>set('status',s.v)}
+                      style={{
+                        padding:'7px 16px', borderRadius:99, fontSize:12, fontWeight:600, cursor:'pointer',
+                        border:'1.5px solid', borderColor: form.status===s.v?'var(--text)':'var(--border)',
+                        background: form.status===s.v?'var(--text)':'transparent',
+                        color: form.status===s.v?'var(--bg)':'var(--text)',
+                      }}>{s.l}</button>
+                  ))}
+                </div>
+              </Field>
+
+              {/* Summary */}
+              <div style={{padding:'18px 20px', borderRadius:'var(--r-md)', background:'var(--surface-sunken)', border:'1px solid var(--border)'}}>
+                <div style={{fontSize:13, fontWeight:700, marginBottom:12}}>Summary</div>
+                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, fontSize:13}}>
+                  <SummaryRow label="Type" value={`${form.bhk} BHK ${form.propertyType}`}/>
+                  <SummaryRow label="City" value={`${form.locality}, ${form.city}`}/>
+                  <SummaryRow label="Area" value={form.area ? `${form.area} sqft` : '—'}/>
+                  <SummaryRow label="Floor" value={form.floor && form.totalFloors ? `${form.floor} / ${form.totalFloors}` : '—'}/>
+                  <SummaryRow label="Rent" value={form.rent ? `₹${parseInt(form.rent).toLocaleString('en-IN')}` : '—'}/>
+                  <SummaryRow label="Furnishing" value={form.furnishing}/>
+                  <SummaryRow label="Photos" value={`${form.photos.filter(Boolean).length} uploaded`}/>
+                  <SummaryRow label="Amenities" value={`${form.amenities.length} selected`}/>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{padding:'16px 28px', borderTop:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0, background:'var(--surface)'}}>
+          <button className="btn btn-ghost" onClick={()=>{ if(step>1) setStep(s=>s-1); else onClose(); }}>
+            {step > 1 ? '← Back' : 'Cancel'}
+          </button>
+          <div style={{display:'flex', gap:8}}>
+            {step < TOTAL_STEPS ? (
+              <button className="btn btn-brand" disabled={!canNext()} onClick={()=>setStep(s=>s+1)}>
+                Continue →
+              </button>
+            ) : (
+              <button className="btn btn-brand" onClick={handleSubmit}>
+                {isEdit ? '✓ Save changes' : '✓ Add property'}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SummaryRow({label, value}) {
+  return (
+    <div style={{display:'flex', justifyContent:'space-between', gap:8}}>
+      <span style={{color:'var(--text-muted)'}}>{label}</span>
+      <span style={{fontWeight:600, textAlign:'right'}}>{value || '—'}</span>
+    </div>
+  );
+}
+
+// ─── Property View Modal ──────────────────────────────────────────────────
+function PropertyViewModal({prop, onClose, onEdit}) {
+  const photos = prop.photos || [prop.photo];
+  const [active, setActive] = useState(0);
+
+  return (
+    <div style={{
+      position:'fixed', inset:0, zIndex:200,
+      background:'rgba(0,0,0,.6)', backdropFilter:'blur(4px)',
+      display:'flex', alignItems:'center', justifyContent:'center', padding:24,
+    }} onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
+      <div style={{
+        background:'var(--surface)', borderRadius:'var(--r-lg)', width:'100%', maxWidth:760,
+        maxHeight:'90vh', overflow:'hidden', display:'flex', flexDirection:'column',
+        boxShadow:'var(--sh-pop)',
+      }}>
+        {/* Header */}
+        <div style={{padding:'18px 24px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0}}>
+          <div>
+            <div style={{fontSize:20, fontWeight:800, letterSpacing:'-0.025em'}}>{prop.bhk} BHK in {prop.locality}</div>
+            <div style={{fontSize:12, color:'var(--text-muted)', marginTop:4, fontFamily:'var(--f-mono)'}}>{prop.id}</div>
+          </div>
+          <div style={{display:'flex', gap:8}}>
+            <button className="btn btn-outline btn-sm" onClick={onEdit}>Edit</button>
+            <button onClick={onClose} style={{background:'var(--surface-sunken)', border:0, borderRadius:'50%', width:34, height:34, cursor:'pointer', fontSize:16, display:'grid', placeItems:'center'}}>✕</button>
+          </div>
+        </div>
+
+        <div style={{flex:1, overflowY:'auto', padding:24}}>
+          {/* Gallery */}
+          <div style={{marginBottom:20}}>
+            <div style={{height:280, borderRadius:'var(--r-md)', overflow:'hidden', marginBottom:8}}>
+              <Img src={photos[active] || photos[0]} style={{width:'100%', height:'100%'}}/>
+            </div>
+            {photos.length > 1 && (
+              <div style={{display:'flex', gap:8, overflowX:'auto'}}>
+                {photos.map((p,i)=>(
+                  <div key={i} onClick={()=>setActive(i)} style={{
+                    width:64, height:48, borderRadius:'var(--r-sm)', overflow:'hidden', flexShrink:0,
+                    cursor:'pointer', border:'2px solid', borderColor: active===i?'var(--brand-500)':'transparent',
+                  }}>
+                    <img src={p} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Specs grid */}
+          <div style={{display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:20}}>
+            {[
+              {l:'Rent', v:`₹${(prop.rentK||0)}k/mo`},
+              {l:'Area', v:`${(prop.area||0).toLocaleString('en-IN')} sqft`},
+              {l:'Floor', v:`${prop.floor||'—'} / ${prop.total||'—'}`},
+              {l:'Furnishing', v:prop.furnishing||'—'},
+              {l:'City', v:prop.city},
+              {l:'Locality', v:prop.locality},
+              {l:'Type', v:prop.propertyType||'Apartment'},
+              {l:'Facing', v:prop.facing||'—'},
+            ].map(s=>(
+              <div key={s.l} style={{padding:'12px 14px', borderRadius:'var(--r-sm)', background:'var(--surface-sunken)'}}>
+                <div style={{fontSize:10, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.08em', fontWeight:600}}>{s.l}</div>
+                <div style={{fontSize:15, fontWeight:700, marginTop:4}}>{s.v}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Status + meta */}
+          <div style={{padding:'14px 18px', borderRadius:'var(--r-md)', border:'1px solid var(--border)', fontSize:13}}>
+            <div style={{display:'flex', gap:24, flexWrap:'wrap'}}>
+              <div><span style={{color:'var(--text-muted)'}}>Status:</span> <strong style={{color: prop.status==='live'?'var(--success)':prop.status==='pending'?'var(--warning)':'var(--error)', textTransform:'capitalize'}}>{prop.status}</strong></div>
+              <div><span style={{color:'var(--text-muted)'}}>Added by:</span> <strong>{prop.addedBy||'Admin'}</strong></div>
+              <div><span style={{color:'var(--text-muted)'}}>Added on:</span> <strong>{prop.addedOn||'—'}</strong></div>
+              {prop.isBroker && <div><span style={{color:'var(--text-muted)'}}>Source:</span> <strong>Broker listing</strong></div>}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+Object.assign(window, { AdminUsersPage, AdminRevenuePage, AdminCmsPage, AdminPropertiesPage });

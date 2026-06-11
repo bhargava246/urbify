@@ -26,7 +26,8 @@ import { ClientDashPage, BrokerDashPage,
          ClientShortlistPage,
          ClientSearchesPage, BROKER_NAV }               from '../pages/client-broker';
 import { AdminDashPage, AdminModPage, AdminUsersPage,
-         AdminRevenuePage, AdminCmsPage }                from '../pages/admin';
+         AdminRevenuePage, AdminCmsPage,
+         AdminPropertiesPage }                           from '../pages/admin';
 import { AboutPage, FaqPage, ContactPage }               from '../pages/info';
 import { CityPage, LocalityPage }                        from '../pages/city';
 import { BlogPage, BlogPostPage }                        from '../pages/blog';
@@ -59,7 +60,7 @@ const PORTAL_PAGES = new Set([
   'ownerDash','ownerList','ownerInquiries','ownerNew',
   'clientDash','clientShort','clientTx','clientSearches',
   'brokerDash','brokerList','brokerInq','brokerCommission',
-  'adminDash','adminMod','adminUsers','adminRev','adminCms',
+  'adminDash','adminMod','adminProperties','adminUsers','adminRev','adminCms',
   'settings',
 ]);
 
@@ -72,7 +73,7 @@ const ALL_PAGES = [
   'ownerDash','ownerList','ownerInquiries','ownerNew',
   'clientDash','clientShort','clientTx','clientSearches',
   'brokerDash','brokerList','brokerInq','brokerCommission',
-  'adminDash','adminMod','adminUsers','adminRev','adminCms',
+  'adminDash','adminMod','adminProperties','adminUsers','adminRev','adminCms',
   'settings','notifications',
 ];
 
@@ -313,11 +314,12 @@ export function UrbifyApp({ initialPage = 'home' }) {
         {page==='brokerInq'        && <OwnerInquiriesPage  {...port} navItems={BROKER_NAV()} navCurrent="brokerInq" roleLabel="Verified Broker"/>}
         {page==='brokerCommission' && <AdminRevenuePage    {...port}/>}
         {/* Admin */}
-        {page==='adminDash'  && <AdminDashPage    {...port}/>}
-        {page==='adminMod'   && <AdminModPage     {...port}/>}
-        {page==='adminUsers' && <AdminUsersPage   {...port}/>}
-        {page==='adminRev'   && <AdminRevenuePage {...port}/>}
-        {page==='adminCms'   && <AdminCmsPage     {...port}/>}
+        {page==='adminDash'        && <AdminDashPage       {...port}/>}
+        {page==='adminMod'         && <AdminModPage        {...port}/>}
+        {page==='adminProperties'  && <AdminPropertiesPage {...port}/>}
+        {page==='adminUsers'       && <AdminUsersPage      {...port}/>}
+        {page==='adminRev'         && <AdminRevenuePage    {...port}/>}
+        {page==='adminCms'         && <AdminCmsPage        {...port}/>}
         {/* Shared */}
         {page==='settings'      && <SettingsPage     nav={nav}/>}
         {page==='notifications' && <NotificationsPage nav={nav}/>}

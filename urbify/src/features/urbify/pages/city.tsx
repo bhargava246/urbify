@@ -13,37 +13,37 @@ import {
 
 function CityPage({nav, savedIds, onSave, onUnlock}) {
   const { listings } = useAppData();
-  const city = "Bangalore";
+  const city = "Jaipur";
   const localities = [
-    { name:"Koramangala", count:142, avg:42 },
-    { name:"Indiranagar", count:98, avg:48 },
-    { name:"HSR Layout", count:128, avg:38 },
-    { name:"Whitefield", count:186, avg:32 },
-    { name:"Jayanagar", count:76, avg:35 },
-    { name:"BTM Layout", count:64, avg:28 },
-    { name:"Marathahalli", count:112, avg:31 },
-    { name:"JP Nagar", count:84, avg:34 },
-    { name:"Sarjapur Road", count:102, avg:36 },
-    { name:"Bellandur", count:88, avg:33 },
-    { name:"Electronic City", count:124, avg:24 },
-    { name:"Hebbal", count:62, avg:30 },
+    { name:"Malviya Nagar", count:142, avg:16 },
+    { name:"C-Scheme", count:98, avg:18 },
+    { name:"Vaishali Nagar", count:128, avg:12 },
+    { name:"Mansarovar", count:186, avg:10 },
+    { name:"Jagatpura", count:76, avg:11 },
+    { name:"Tonk Road", count:102, avg:13 },
+    { name:"Ajmer Road", count:88, avg:9 },
+    { name:"Pratap Nagar", count:64, avg:10 },
+    { name:"Nirman Nagar", count:72, avg:14 },
+    { name:"Bani Park", count:56, avg:16 },
+    { name:"Sanganer", count:84, avg:8 },
+    { name:"Murlipura", count:62, avg:9 },
   ];
 
   return (
     <div>
       <section style={{padding:'56px 28px 32px', maxWidth:1440, margin:'0 auto'}}>
         <div style={{fontSize:12, color:'var(--text-muted)', marginBottom:18}}>
-          <span style={{cursor:'pointer'}} onClick={()=>nav('home')}>Home</span> / Rent / <span style={{color:'var(--text)'}}>Bangalore</span>
+          <span style={{cursor:'pointer'}} onClick={()=>nav('home')}>Home</span> / Rent / <span style={{color:'var(--text)'}}>Jaipur</span>
         </div>
         <h1 className="font-display" style={{fontSize:'clamp(48px, 7vw, 96px)', fontWeight:800, letterSpacing:'-0.045em', lineHeight:.96, margin:0}}>
           Homes for rent<br/>in {city}.
         </h1>
         <div style={{display:'flex', gap:18, flexWrap:'wrap', marginTop:28, alignItems:'baseline'}}>
-          <Stat2 big="2,847" l="active rentals"/>
+          <Stat2 big="1,000+" l="active rentals"/>
           <span style={{color:'var(--text-faint)'}}>·</span>
-          <Stat2 big="₹38k" l="avg 2 BHK rent"/>
+          <Stat2 big="₹14k" l="avg 2 BHK rent"/>
           <span style={{color:'var(--text-faint)'}}>·</span>
-          <Stat2 big="98" l="localities covered"/>
+          <Stat2 big="40+" l="localities covered"/>
           <span style={{color:'var(--text-faint)'}}>·</span>
           <Stat2 big="4.8★" l="on Google"/>
         </div>
@@ -53,7 +53,7 @@ function CityPage({nav, savedIds, onSave, onUnlock}) {
           <div style={{display:'grid', gridTemplateColumns:'1.6fr 1fr 1fr auto', gap:10}}>
             <div style={{display:'flex', alignItems:'center', gap:10, padding:'0 14px', background:'var(--surface-sunken)', borderRadius:'var(--r-sm)', height:'var(--row-h)'}}>
               <Icon.pin/>
-              <input className="input" defaultValue="Koramangala" style={{border:0, background:'transparent', padding:0, height:'auto', flex:1}}/>
+              <input className="input" defaultValue="Malviya Nagar" style={{border:0, background:'transparent', padding:0, height:'auto', flex:1}}/>
             </div>
             <select className="input select" style={{background:'var(--surface-sunken)', border:0}}><option>Any BHK</option><option>1 BHK</option><option>2 BHK</option><option>3 BHK</option></select>
             <select className="input select" style={{background:'var(--surface-sunken)', border:0}}><option>Any budget</option><option>Under ₹20k</option><option>₹20-40k</option><option>₹40-60k</option><option>₹60k+</option></select>
@@ -71,10 +71,10 @@ function CityPage({nav, savedIds, onSave, onUnlock}) {
 
         <div style={{display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:14}}>
           {[
-            { bhk:"1 BHK", avg:22, range:"₹15k – ₹32k", listings:412 },
-            { bhk:"2 BHK", avg:38, range:"₹26k – ₹58k", listings:1284, primary:true },
-            { bhk:"3 BHK", avg:62, range:"₹42k – ₹95k", listings:842 },
-            { bhk:"4+ BHK", avg:120, range:"₹78k – ₹2.5L", listings:309 },
+            { bhk:"1 BHK", avg:8, range:"₹5k – ₹14k", listings:412 },
+            { bhk:"2 BHK", avg:14, range:"₹9k – ₹22k", listings:1284, primary:true },
+            { bhk:"3 BHK", avg:22, range:"₹14k – ₹36k", listings:842 },
+            { bhk:"4+ BHK", avg:38, range:"₹24k – ₹70k", listings:309 },
           ].map(b=>(
             <div key={b.bhk} className="card" style={{padding:22, background: b.primary ? 'var(--text)' : 'var(--surface)', color: b.primary ? 'var(--bg)' : 'var(--text)', border: b.primary ? 0 : '1px solid var(--border)'}}>
               <div style={{fontSize:12, opacity: b.primary ? .7 : 1, color: b.primary ? 'inherit' : 'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.08em', fontWeight:600}}>{b.bhk}</div>
@@ -98,7 +98,7 @@ function CityPage({nav, savedIds, onSave, onUnlock}) {
               Where {city} lives.
             </h2>
           </div>
-          <button className="btn btn-ghost btn-sm">View all 98 →</button>
+          <button className="btn btn-ghost btn-sm">View all 40+ →</button>
         </div>
 
         <div style={{display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:14}}>
@@ -135,7 +135,7 @@ function CityPage({nav, savedIds, onSave, onUnlock}) {
               Fresh on the market.
             </h2>
           </div>
-          <button className="btn btn-ghost btn-sm" onClick={()=>nav('search')}>View all 2,847 →</button>
+          <button className="btn btn-ghost btn-sm" onClick={()=>nav('search')}>View all →</button>
         </div>
         <div style={{display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:14}}>
           {listings.slice(0, 4).map(l=>(
@@ -158,17 +158,17 @@ function CityPage({nav, savedIds, onSave, onUnlock}) {
             </h2>
           </div>
           <div style={{fontSize:16, lineHeight:1.7, color:'var(--text-muted)', display:'flex', flexDirection:'column', gap:18}}>
-            <p style={{margin:0}}>Bangalore's rental market is the most competitive in India. Average rents have grown 22% over the last two years, driven by IT corridor demand from Whitefield, Sarjapur, and Outer Ring Road.</p>
-            <p style={{margin:0}}>Most rentals require a deposit of 6–10 months for independent homes and 2–3 months for apartment complexes. Furnished options are common in Indiranagar and Koramangala, while bare-shell units dominate the suburbs.</p>
-            <p style={{margin:0}}>The best months to find a deal: November to February. School term endings (April-May) tighten supply considerably.</p>
+            <p style={{margin:0}}>Jaipur's rental market combines affordability with a fast-growing demand from IT, tourism, and educational institutions. Localities like Malviya Nagar, C-Scheme, and Vaishali Nagar remain the most sought-after, with newer areas like Jagatpura and Pratap Nagar attracting young professionals.</p>
+            <p style={{margin:0}}>Deposits typically run 2–3 months for apartments and up to 6 months for independent homes. Semi-furnished options are common across mid-range localities, while premium areas like C-Scheme and Bani Park have more fully-furnished stock.</p>
+            <p style={{margin:0}}>The best months to search: October to January, when migration from summer slows down. Avoid April–June when university students drive up demand in Mansarovar and Murlipura.</p>
           </div>
         </div>
 
         <div style={{maxWidth:1100, margin:'48px auto 0', display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:14}}>
-          <Tile label="Rent growth (YoY)" value="+12.4%" tone="success"/>
+          <Tile label="Rent growth (YoY)" value="+8%" tone="success"/>
           <Tile label="Avg deposit" value="2-3 months"/>
-          <Tile label="Best months to rent" value="Nov-Feb"/>
-          <Tile label="Most furnished" value="Koramangala"/>
+          <Tile label="Best months to rent" value="Oct-Jan"/>
+          <Tile label="Most furnished" value="C-Scheme"/>
         </div>
       </section>
 
@@ -177,9 +177,9 @@ function CityPage({nav, savedIds, onSave, onUnlock}) {
         <h2 className="font-display" style={{fontSize:'clamp(28px, 4vw, 40px)', fontWeight:800, letterSpacing:'-0.03em', margin:'0 0 24px'}}>
           Renting in {city} — FAQs
         </h2>
-        <Faq q="What's the average rent for a 2 BHK in Bangalore?" a="The platform-wide average is ₹38,000/month. Central localities (Indiranagar, Koramangala, Jayanagar) typically run ₹42k–₹58k. Suburbs (Whitefield, Electronic City) are ₹26k–₹38k."/>
-        <Faq q="Which Bangalore neighbourhoods are best for working professionals?" a="Koramangala and HSR Layout dominate for IT and startup employees — good connectivity, cafes, and quick metro access. Indiranagar suits creative roles and night-life. Whitefield works if you commute to IT Park East."/>
-        <Faq q="Is owning a car necessary?" a="Less so than it used to be. Namma Metro covers Whitefield, Indiranagar, Hebbal, and Electronic City as of 2026. Yellow Line via JP Nagar and Bommasandra opened in March."/>
+        <Faq q="What's the average rent for a 2 BHK in Jaipur?" a="The platform-wide average is ₹14,000/month. Central localities like C-Scheme and Malviya Nagar run ₹16k–₹22k. Newer areas like Mansarovar and Pratap Nagar range from ₹9k–₹13k."/>
+        <Faq q="Which Jaipur neighbourhoods are best for working professionals?" a="Malviya Nagar and C-Scheme are the top picks — close to corporate hubs, markets, and restaurants. Vaishali Nagar suits families and offers good schools. Jagatpura is growing fast with the IT park nearby."/>
+        <Faq q="Is owning a vehicle necessary in Jaipur?" a="Two-wheelers are common and practical. Jaipur Metro connects Mansarovar to Badi Chaupar, making the Pink City area accessible. For the outskirts, a personal vehicle is helpful but not essential if you're near the metro corridor."/>
       </section>
 
       <Footer nav={nav}/>
@@ -243,11 +243,11 @@ function LocalityPage({nav, savedIds, onSave, onUnlock}) {
       <section style={{padding:'24px 28px 56px', maxWidth:1440, margin:'0 auto'}}>
         <div style={{display:'grid', gridTemplateColumns:'repeat(5, 1fr)', borderTop:'1px solid var(--border)', borderBottom:'1px solid var(--border)', padding:'24px 0'}}>
           {[
-            { l:"Avg 2 BHK rent", v:"₹42k", sub:"+8% YoY", tone:'success' },
-            { l:"Furnished listings", v:"68%", sub:"city avg 42%" },
-            { l:"Pet-friendly", v:"31%", sub:"city avg 18%" },
-            { l:"Avg time to rent", v:"9 days", sub:"city avg 16" },
-            { l:"Median area", v:"1,240 sq ft", sub:"2 BHK" },
+            { l:"Avg 2 BHK rent", v:"₹14k", sub:"+8% YoY", tone:'success' },
+            { l:"Furnished listings", v:"52%", sub:"city avg 35%" },
+            { l:"Pet-friendly", v:"24%", sub:"city avg 14%" },
+            { l:"Avg time to rent", v:"11 days", sub:"city avg 18" },
+            { l:"Median area", v:"980 sq ft", sub:"2 BHK" },
           ].map((s, i)=>(
             <div key={i} style={{padding:'0 24px', borderLeft: i===0?0:'1px solid var(--border)'}}>
               <div style={{fontSize:11, color:'var(--text-muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.08em'}}>{s.l}</div>
@@ -265,11 +265,11 @@ function LocalityPage({nav, savedIds, onSave, onUnlock}) {
             <div style={{fontSize:13, color:'var(--text-muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.08em'}}>Rent trend · last 24 months</div>
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', marginTop:10}}>
               <div>
-                <div className="font-display" style={{fontSize:42, fontWeight:800, letterSpacing:'-0.04em'}}>₹42k</div>
+                <div className="font-display" style={{fontSize:42, fontWeight:800, letterSpacing:'-0.04em'}}>₹14k</div>
                 <div style={{fontSize:13, color:'var(--text-muted)'}}>avg 2 BHK rent today</div>
               </div>
               <div style={{textAlign:'right'}}>
-                <div className="font-display" style={{fontSize:22, fontWeight:800, letterSpacing:'-0.03em', color:'var(--success)'}}>+22%</div>
+                <div className="font-display" style={{fontSize:22, fontWeight:800, letterSpacing:'-0.03em', color:'var(--success)'}}>+8%</div>
                 <div style={{fontSize:11, color:'var(--text-muted)'}}>vs 2 years ago</div>
               </div>
             </div>
@@ -293,13 +293,13 @@ function LocalityPage({nav, savedIds, onSave, onUnlock}) {
             <div style={{fontSize:13, color:'var(--text-muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.08em'}}>Nearby landmarks</div>
             <div style={{display:'flex', flexDirection:'column', gap:14, marginTop:20}}>
               {[
-                { n:"Forum Mall", d:"0.6 km", t:"shopping" },
-                { n:"Sony World Junction", d:"0.4 km", t:"transit" },
-                { n:"Christ University", d:"1.2 km", t:"education" },
-                { n:"St John's Hospital", d:"1.8 km", t:"hospital" },
-                { n:"Manipal Hospital", d:"2.4 km", t:"hospital" },
-                { n:"Indiranagar Metro", d:"3.1 km", t:"metro" },
-                { n:"Outer Ring Road", d:"0.9 km", t:"highway" },
+                { n:"World Trade Park", d:"1.2 km", t:"shopping" },
+                { n:"Mansarovar Metro", d:"2.4 km", t:"metro" },
+                { n:"Mahatma Gandhi Hospital", d:"1.6 km", t:"hospital" },
+                { n:"IIT Jodhpur Jaipur Campus", d:"3.0 km", t:"education" },
+                { n:"Hawa Mahal", d:"4.8 km", t:"landmark" },
+                { n:"Jaipur Railway Station", d:"5.2 km", t:"transit" },
+                { n:"Jaipur Airport", d:"9.1 km", t:"airport" },
               ].map(p=>(
                 <div key={p.n} style={{display:'flex', justifyContent:'space-between', alignItems:'center', paddingBottom:14, borderBottom:'1px solid var(--border)'}}>
                   <div>
@@ -323,10 +323,10 @@ function LocalityPage({nav, savedIds, onSave, onUnlock}) {
 
         <div style={{display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:14}}>
           {[
-            { bhk:"1 BHK", avg:24, count:18 },
-            { bhk:"2 BHK", avg:42, count:38, primary:true },
-            { bhk:"3 BHK", avg:68, count:28 },
-            { bhk:"4+ BHK", avg:132, count:14 },
+            { bhk:"1 BHK", avg:8, count:18 },
+            { bhk:"2 BHK", avg:14, count:38, primary:true },
+            { bhk:"3 BHK", avg:22, count:28 },
+            { bhk:"4+ BHK", avg:38, count:14 },
           ].map(b=>(
             <div key={b.bhk} className="card" style={{padding:18, cursor:'pointer'}} onClick={()=>nav('search')}>
               <div style={{fontSize:12, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.08em', fontWeight:600}}>{b.bhk} in {loc}</div>

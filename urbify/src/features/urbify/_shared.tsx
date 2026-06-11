@@ -403,8 +403,8 @@ function Modal({open, onClose, children, width = 920, padding = 0}) {
 
 function PortalShell({user, navItems, current, onNav, children}) {
   return (
-    <div style={{display:'grid', gridTemplateColumns:'248px 1fr', minHeight:'calc(100vh - 64px)', background:'var(--surface-sunken)'}}>
-      <aside style={{
+    <div className="portal-layout" style={{display:'grid', gridTemplateColumns:'248px 1fr', minHeight:'calc(100vh - 64px)', background:'var(--surface-sunken)'}}>
+      <aside className="portal-sidebar" style={{
         background:'var(--surface)', borderRight:'1px solid var(--border)',
         padding:'24px 16px', display:'flex', flexDirection:'column',
         position:'sticky', top:64, height:'calc(100vh - 64px)',
@@ -429,7 +429,7 @@ function PortalShell({user, navItems, current, onNav, children}) {
           </div>
         </div>
 
-        <nav style={{display:'flex', flexDirection:'column', gap:2, flex:1}}>
+        <nav className="nav-items" style={{display:'flex', flexDirection:'column', gap:2, flex:1}}>
           {navItems.map(item=>{
             if (item.divider) return <div key={item.divider} style={{fontSize:10, color:'var(--text-faint)', fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'14px 12px 6px'}}>{item.divider}</div>;
             const active = item.id === current;
@@ -443,8 +443,8 @@ function PortalShell({user, navItems, current, onNav, children}) {
                 fontWeight: active ? 600 : 500, fontSize:14,
                 transition:'background .15s',
               }}>
-                <span style={{fontSize:16, color: active ? 'var(--text)' : 'var(--text-muted)'}}>{item.icon}</span>
-                <span style={{flex:1}}>{item.label}</span>
+                <span className="nav-icon" style={{fontSize:16, color: active ? 'var(--text)' : 'var(--text-muted)'}}>{item.icon}</span>
+                <span className="nav-label" style={{flex:1}}>{item.label}</span>
                 {item.badge && <span className="chip" style={{height:18, padding:'0 7px', fontSize:10, fontWeight:700, background: item.badgeTone === 'danger' ? 'var(--error)' : 'var(--text)', color:'#fff', border:0}}>{item.badge}</span>}
               </button>
             );
@@ -458,7 +458,7 @@ function PortalShell({user, navItems, current, onNav, children}) {
         </div>
       </aside>
 
-      <main style={{padding:'32px 36px', minWidth:0}}>{children}</main>
+      <main className="portal-main" style={{padding:'32px 36px', minWidth:0}}>{children}</main>
     </div>
   );
 }
@@ -529,7 +529,7 @@ function Footer({nav}: any) {
   return (
     <footer style={{background:'var(--text)', color:'var(--bg)', padding:'72px 28px 32px', marginTop:0}}>
       <div style={{maxWidth:1440, margin:'0 auto'}}>
-        <div style={{display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr 1fr', gap:48, paddingBottom:48, borderBottom:'1px solid rgba(255,255,255,.12)'}}>
+        <div className="footer-grid" style={{display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr 1fr', gap:48, paddingBottom:48, borderBottom:'1px solid rgba(255,255,255,.12)'}}>
           <div>
             <div className="font-display" style={{fontSize:36, fontWeight:800, letterSpacing:'-0.04em'}}>urbify</div>
             <p style={{maxWidth:300, fontSize:14, opacity:.6, marginTop:16, lineHeight:1.6}}>

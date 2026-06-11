@@ -43,7 +43,7 @@ export class PropertiesService {
       data: {
         ownerId,
         listingType: dto.listingType,
-        status: 'PENDING_REVIEW',
+        status: userRole === Role.ADMIN ? 'ACTIVE' : 'PENDING_REVIEW',
         locality: dto.locality,
         landmark: dto.landmark,
         city: dto.city,
@@ -353,9 +353,14 @@ export class PropertiesService {
 
   // --- Helpers ---
 
-  async deleteListing(listingId: string, ownerId: string): Promise<void> {
-    this.logger.log(`Deleting listing id=${listingId} by ownerId=${ownerId}`);
-    await this.findOwnedListing(listingId, ownerId);
+  async deleteListing(listingId: string, requesterId: string, role?: Role): Promise<void> {
+    this.logger.log(`Deleting listing id=${listingId} by requesterId=${requesterId}`);
+    if (role !== Role.ADMIN) {
+      await this.findOwnedListing(listingId, requesterId);
+    } else {
+      const listing = await this.prisma.listing.findUnique({ where: { id: listingId } });
+      if (!listing) throw new NotFoundException(`Listing ${listingId} not found`);
+    }
     await this.prisma.listing.delete({ where: { id: listingId } });
     this.logger.log(`Listing deleted: id=${listingId}`);
   }

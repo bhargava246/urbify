@@ -122,6 +122,7 @@ export class UsersService {
     userId: string,
     isBanned: boolean,
     isActive: boolean,
+    isVerified?: boolean,
   ) {
     this.logger.log(`Setting user status: userId=${userId} isBanned=${isBanned} isActive=${isActive}`);
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -129,8 +130,12 @@ export class UsersService {
 
     return this.prisma.user.update({
       where: { id: userId },
-      data: { isBanned, isActive },
-      select: { id: true, isBanned: true, isActive: true },
+      data: {
+        isBanned,
+        isActive,
+        ...(isVerified !== undefined && { isVerified }),
+      },
+      select: { id: true, isBanned: true, isActive: true, isVerified: true },
     });
   }
 

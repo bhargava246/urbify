@@ -265,21 +265,17 @@ function BrokerDashPage({nav}) {
         <div className="card" style={{padding:24}}>
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline'}}>
             <div>
-              <div style={{fontSize:11, color:'var(--text-muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.08em'}}>Commission earned · last 6 months</div>
-              <div className="font-display" style={{fontSize:36, fontWeight:800, letterSpacing:'-0.035em', marginTop:4}}>₹12.4 Lakh</div>
-              <div style={{fontSize:12, color:'var(--success)', fontWeight:600, marginTop:4}}>+34% vs previous 6 months</div>
-            </div>
-            <select className="input select btn-sm" style={{height:32, fontSize:12}}><option>6 months</option><option>12 months</option></select>
-          </div>
-          <div style={{display:'flex', alignItems:'flex-end', gap:6, height:120, marginTop:18}}>
-            {[40, 55, 38, 72, 86, 110, 142, 138, 165, 188, 220, 248].map((v, i)=>(
-              <div key={i} style={{flex:1, display:'flex', flexDirection:'column', justifyContent:'flex-end', height:'100%'}}>
-                <div style={{height:`${(v/260)*100}%`, background: i === 11 ? 'var(--brand-500)' : 'var(--surface-sunken)', borderRadius:4, transition:'all .3s'}}/>
+              <div style={{fontSize:11, color:'var(--text-muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.08em'}}>Total unlocks · all listings</div>
+              <div className="font-display" style={{fontSize:36, fontWeight:800, letterSpacing:'-0.035em', marginTop:4}}>
+                {loadingBroker ? '…' : totalUnlocks > 0 ? totalUnlocks : '—'}
               </div>
-            ))}
+              <div style={{fontSize:12, color:'var(--text-muted)', fontWeight:500, marginTop:4}}>
+                {totalUnlocks > 0 ? 'tenants unlocked your listings' : 'No unlocks yet — share your listings'}
+              </div>
+            </div>
           </div>
-          <div style={{display:'flex', justifyContent:'space-between', marginTop:6, fontSize:10, color:'var(--text-faint)'}}>
-            <span>Jan</span><span>Mar</span><span>May</span><span>Jul</span><span>Sep</span><span>Nov</span>
+          <div style={{marginTop:20, padding:'14px 0', borderTop:'1px solid var(--border)', fontSize:13, color:'var(--text-muted)'}}>
+            Commission tracking — coming soon. Each unlock brings tenants directly to you.
           </div>
         </div>
       </div>
@@ -290,7 +286,7 @@ function BrokerDashPage({nav}) {
           <div className="font-display" style={{fontSize:18, fontWeight:700, letterSpacing:'-0.02em'}}>Your portfolio</div>
           <div style={{display:'flex', gap:8}}>
             <input className="input btn-sm" placeholder="Search listings…" style={{height:32, fontSize:12, width:220}}/>
-            <select className="input select btn-sm" style={{height:32, fontSize:12}}><option>All cities</option><option>Bangalore</option><option>Mumbai</option></select>
+            <select className="input select btn-sm" style={{height:32, fontSize:12}}><option>All cities</option><option>Jaipur</option></select>
           </div>
         </div>
         <table style={{width:'100%', borderCollapse:'collapse', fontSize:13}}>

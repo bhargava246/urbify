@@ -65,8 +65,8 @@ export class UsersController {
   @ApiOperation({ summary: '[ADMIN] Ban or activate a user' })
   setStatus(
     @Param('id') id: string,
-    @Body() body: { isBanned: boolean; isActive: boolean },
+    @Body() body: { isBanned: boolean; isActive: boolean; isVerified?: boolean },
   ) {
-    return this.usersService.setUserStatus(id, body.isBanned, body.isActive);
+    return this.usersService.setUserStatus(id, body.isBanned, body.isActive, body.isVerified);
   }
 }

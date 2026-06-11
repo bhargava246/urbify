@@ -164,10 +164,10 @@ function AuthPage({nav}) {
   );
 
   return (
-    <div style={{minHeight:'calc(100vh - 64px)', display:'grid', gridTemplateColumns:'1.1fr 1fr', background:'var(--surface-sunken)'}}>
+    <div className="auth-split" style={{minHeight:'calc(100vh - 64px)', display:'grid', gridTemplateColumns:'1.1fr 1fr', background:'var(--surface-sunken)'}}>
 
       {/* LEFT brand panel */}
-      <div style={{background:'var(--text)', color:'var(--bg)', padding:'80px 64px', position:'relative', overflow:'hidden', display:'flex', flexDirection:'column', justifyContent:'space-between'}}>
+      <div className="auth-panel-left" style={{background:'var(--text)', color:'var(--bg)', padding:'80px 64px', position:'relative', overflow:'hidden', display:'flex', flexDirection:'column', justifyContent:'space-between'}}>
         <div>
           <div className="font-display" style={{fontSize:32, fontWeight:800, letterSpacing:'-0.04em'}}>urbify</div>
           <h1 className="font-display" style={{fontSize:'clamp(40px, 4.5vw, 64px)', fontWeight:800, letterSpacing:'-0.045em', lineHeight:.98, marginTop:64}}>
@@ -206,10 +206,10 @@ function AuthPage({nav}) {
             <button onClick={()=>{ setMode('login'); setError(''); }} className="btn btn-ghost btn-sm">← Back to login</button>
           )}
         </div>
-        <p className="muted" style={{fontSize:15, marginBottom:24}}>{mode === 'login' || mode === 'signup' ? cur.sub : mode === 'forgot' ? "We'll email you a one-time code" : mode === 'verify' ? "Enter the OTP sent to your email to verify your account" : "Enter the OTP sent to your email"}</p>
+        <p className="muted" style={{fontSize:15, marginBottom:24}}>{mode === 'login' ? "Welcome back — sign in to continue" : mode === 'signup' ? cur.sub : mode === 'forgot' ? "We'll email you a one-time code" : mode === 'verify' ? "Enter the OTP sent to your email to verify your account" : "Enter the OTP sent to your email"}</p>
 
-        {/* Role tabs — only on login/signup */}
-        {(mode === 'login' || mode === 'signup') && (
+        {/* Role tabs — only on signup */}
+        {mode === 'signup' && (
           <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:8, marginBottom:24}}>
             {tabs.map(t=>(
               <button key={t.id} onClick={()=>setTab(t.id)} style={{
@@ -393,8 +393,8 @@ function AuthPage({nav}) {
 }
 
 function PricingPage({nav}) {
-  const [rent, setRent] = useState(40000);
-  const [calcRent, setCalcRent] = useState(40000);
+  const [rent, setRent] = useState(20000);
+  const [calcRent, setCalcRent] = useState(20000);
   const dailyRent = Math.round(rent / 30);
   const base = Math.round(dailyRent * 7.5);
   const gst = Math.round(base * 0.18);
@@ -409,7 +409,7 @@ function PricingPage({nav}) {
           Honest pricing.<br/>No surprises.
         </h1>
         <p className="muted" style={{fontSize:20, maxWidth:680, marginTop:24, lineHeight:1.4}}>
-          Owners and brokers pay <strong style={{color:'var(--text)'}}>nothing</strong>. Tenants pay one flat fee of <strong style={{color:'var(--text)'}}>50% of market brokerage</strong>. That's it.
+          Owners and brokers pay <strong style={{color:'var(--text)'}}>nothing</strong>. Tenants pay one flat fee — <strong style={{color:'var(--text)'}}>half of market rate</strong>. That's it.
         </p>
       </section>
 
@@ -432,7 +432,7 @@ function PricingPage({nav}) {
               </div>
 
               <div style={{display:'flex', gap:6, marginTop:24, flexWrap:'wrap'}}>
-                {[15000, 25000, 40000, 65000, 100000].map(r=>(
+                {[10000, 15000, 20000, 30000, 50000].map(r=>(
                   <button key={r} onClick={()=>setRent(r)} className="chip"
                     style={{cursor:'pointer', background: rent===r ? 'var(--bg)' : 'rgba(255,255,255,.1)', color: rent===r ? 'var(--text)' : 'var(--bg)', border:0, height:30, fontSize:12}}>
                     ₹{fmt(r/1000)}k
@@ -453,7 +453,7 @@ function PricingPage({nav}) {
 
               <div style={{marginTop:36, padding:'18px 22px', background:'var(--surface-sunken)', borderRadius:'var(--r-md)'}}>
                 <Row label={`Daily rent (₹${fmt(rent)} ÷ 30)`} value={`₹${fmt(dailyRent)}`}/>
-                <Row label="× 50% of market rate" value={`₹${fmt(base)}`}/>
+                <Row label="× half of market rate" value={`₹${fmt(base)}`}/>
                 <Row label="+ GST 18%" value={`₹${fmt(gst)}`}/>
                 <div style={{height:1, background:'var(--border)', margin:'10px 0'}}/>
                 <Row label="Total" value={`₹${fmt(total)}`} big/>
@@ -488,7 +488,7 @@ function PricingPage({nav}) {
             <CompCol name="99acres / MagicBricks" subtitle="Classifieds + brokers"/>
 
             <CompRow row="Owner listing cost" cells={["FREE", "₹2,499 – ₹9,999", "FREE listing + paid boost"]} good={[true, false, false]}/>
-            <CompRow row="Tenant fee" cells={["50% of market brokerage", "₹1,000 – ₹5,000 / month sub", "Broker commission (1 mo)"]} good={[true, false, false]}/>
+            <CompRow row="Tenant fee" cells={["Half of market rate", "₹1,000 – ₹5,000 / month sub", "Broker commission (1 mo)"]} good={[true, false, false]}/>
             <CompRow row="Broker model" cells={["Keep 100% commission", "Not supported", "Pay-per-lead"]} good={[true, false, false]}/>
             <CompRow row="Address privacy" cells={["Hidden until paid", "Partial", "Always visible"]} good={[true, false, false]}/>
             <CompRow row="Refund policy" cells={["24h auto-refund", "Limited", "None"]} good={[true, false, false]}/>
@@ -552,7 +552,7 @@ function Row({label, value, big}) {
     <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', padding:'8px 0'}}>
       <span style={{fontSize:13, color: big ? 'var(--text)' : 'var(--text-muted)', fontWeight: big ? 700 : 500}}>{label}</span>
       <span className="font-mono" style={{fontSize: big ? 16 : 14, fontWeight: big ? 800 : 600}}>{value}</span>
-    </div>
+      </div>
   );
 }
 

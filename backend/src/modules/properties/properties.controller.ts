@@ -72,7 +72,7 @@ export class PropertiesController {
   }
 
   @Post()
-  @Roles(Role.OWNER, Role.BROKER)
+  @Roles(Role.OWNER, Role.BROKER, Role.ADMIN)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Create a new listing' })
   create(@Body() dto: CreateListingDto, @CurrentUser() user: JwtPayload) {
@@ -105,7 +105,7 @@ export class PropertiesController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete listing' })
   delete(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
-    return this.propertiesService.deleteListing(id, user.sub);
+    return this.propertiesService.deleteListing(id, user.sub, user.role as Role);
   }
 
   @Patch(':id/status')

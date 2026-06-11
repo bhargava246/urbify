@@ -776,4 +776,39 @@ function HelpPage({nav}) {
         <div style={{maxWidth:1100, margin:'40px auto 0', display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:16}}>
           <div className="card" style={{padding:28, textAlign:'center'}}>
             <div style={{fontSize:32}}>💬</div>
-            <div className="font-display" style={{fontSize:18, fontWeight:700, mar
+            <div style={{fontWeight:700, fontSize:16, marginTop:12}}>Live chat</div>
+            <p style={{fontSize:13, color:'var(--text-muted)', marginTop:6}}>Chat with a support specialist right now</p>
+            <button className="btn btn-brand btn-sm" style={{marginTop:16, width:'100%'}}>Start chat</button>
+          </div>
+          <div className="card" style={{padding:28, textAlign:'center'}}>
+            <div style={{fontSize:32}}>📧</div>
+            <div className="font-display" style={{fontSize:18, fontWeight:700, marginTop:12}}>Email us</div>
+            <p style={{fontSize:13, color:'var(--text-muted)', marginTop:6}}>We reply within 4 hours on business days</p>
+            <button className="btn btn-outline btn-sm" style={{marginTop:16, width:'100%'}}>support@urbify.in</button>
+          </div>
+          <div className="card" style={{padding:28, textAlign:'center'}}>
+            <div style={{fontSize:32}}>📞</div>
+            <div className="font-display" style={{fontSize:18, fontWeight:700, marginTop:12}}>Call us</div>
+            <p style={{fontSize:13, color:'var(--text-muted)', marginTop:6}}>+91 80-4700-0000 · Mon–Sat 9 AM – 8 PM</p>
+            <button className="btn btn-outline btn-sm" style={{marginTop:16, width:'100%'}}>Call now</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function NotFoundPage({nav}) {
+  return (
+    <div style={{minHeight:'60vh', display:'flex', alignItems:'center', justifyContent:'center', textAlign:'center', padding:40}}>
+      <div>
+        <div style={{fontSize:80, fontWeight:900, letterSpacing:'-0.05em', color:'var(--border-strong)'}}>404</div>
+        <div className="font-display" style={{fontSize:28, fontWeight:800, marginTop:8}}>Page not found</div>
+        <p style={{color:'var(--text-muted)', marginTop:12, fontSize:15}}>The page you're looking for doesn't exist or has been moved.</p>
+        <button className="btn btn-brand" style={{marginTop:24}} onClick={()=>nav('home')}>Go home</button>
+      </div>
+    </div>
+  );
+}
+
+export { BrokerPortfolioPage, ClientTxPage, SettingsPage, HelpPage, NotFoundPage };

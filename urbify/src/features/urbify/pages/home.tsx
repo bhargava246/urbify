@@ -19,6 +19,7 @@ function LocationAutocomplete({ value, onChange, placeholder = "City, locality o
   const [suggestions, setSuggestions] = useState([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [hasFocused, setHasFocused] = useState(false);
   const ref = React.useRef(null);
 
   // Close dropdown on outside click
@@ -28,9 +29,9 @@ function LocationAutocomplete({ value, onChange, placeholder = "City, locality o
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Debounced autocomplete
+  // Debounced autocomplete — only after user has actively focused the input
   useEffect(() => {
-    if (inputVal.length < 2) { setSuggestions([]); setOpen(false); return; }
+    if (!hasFocused || inputVal.length < 2) { setSuggestions([]); setOpen(false); return; }
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
@@ -54,7 +55,7 @@ function LocationAutocomplete({ value, onChange, placeholder = "City, locality o
       }
     }, 320);
     return () => clearTimeout(timer);
-  }, [inputVal]);
+  }, [inputVal, hasFocused]);
 
   const select = (item) => {
     setInputVal(item.label);
@@ -71,7 +72,7 @@ function LocationAutocomplete({ value, onChange, placeholder = "City, locality o
           className="input"
           value={inputVal}
           onChange={e => { setInputVal(e.target.value); onChange(e.target.value); }}
-          onFocus={() => suggestions.length > 0 && setOpen(true)}
+          onFocus={() => { setHasFocused(true); if (suggestions.length > 0) setOpen(true); }}
           placeholder={placeholder}
           style={{ border: 0, background: 'transparent', padding: 0, height: 'auto', flex: 1 }}
           autoComplete="off"
@@ -111,10 +112,10 @@ function LocationAutocomplete({ value, onChange, placeholder = "City, locality o
 
 function HomePage({nav, savedIds, onSave, onUnlock}) {
   const [tab, setTab] = useState("rent");
-  const [locationQ, setLocationQ] = useState("Bangalore");
+  const [locationQ, setLocationQ] = useState("Jaipur");
   const [bhk, setBhk] = useState("Any");
   const [type, setType] = useState("Apartment");
-  const [city, setCity] = useState("Bangalore");
+  const [city, setCity] = useState("Jaipur");
 
   const { listings, cities, isLoadingListings } = useAppData();
   const featured = listings.slice(0, 8);
@@ -130,10 +131,10 @@ function HomePage({nav, savedIds, onSave, onUnlock}) {
         <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:24}}>
           <span className="chip" style={{background:'transparent', border:'1px solid var(--border-strong)'}}>
             <span style={{width:6, height:6, borderRadius:'50%', background:'var(--success)', display:'inline-block'}}/>
-            Live in 12 cities
+            Now live in Jaipur
           </span>
           <span className="chip" style={{background:'var(--brand-50,#E6F3F0)', border:'1.5px solid var(--brand-300,#7EC8BB)', color:'var(--brand-700,#0D7C66)', fontWeight:700}}>
-            ₹0 to list · 50% less than broker fee
+            ₹0 to list · half of market rate
           </span>
         </div>
 
@@ -153,7 +154,7 @@ function HomePage({nav, savedIds, onSave, onUnlock}) {
         </h1>
 
         <p className="muted" style={{fontSize:20, maxWidth:680, marginTop:32, lineHeight:1.4}}>
-          Owners list free. Tenants pay just <strong style={{color:'var(--text)'}}>50% of market brokerage</strong> — one time, all in.
+          Owners list free. Tenants pay just <strong style={{color:'var(--text)'}}>half of market rate</strong> — one time, all in.
           Brokers keep <strong style={{color:'var(--text)'}}>every rupee</strong> of their commission.
         </p>
 
@@ -176,7 +177,7 @@ function HomePage({nav, savedIds, onSave, onUnlock}) {
             ))}
           </div>
 
-          <div style={{display:'grid', gridTemplateColumns:'1.6fr 0.9fr 0.9fr auto', gap:10, alignItems:'stretch'}}>
+          <div className="hero-search-grid" style={{display:'grid', gridTemplateColumns:'1.6fr 0.9fr 0.9fr auto', gap:10, alignItems:'stretch'}}>
             <LocationAutocomplete value={locationQ} onChange={setLocationQ} placeholder="City, locality or landmark…"/>
             <select className="input select" value={type} onChange={e=>setType(e.target.value)} style={{background:'var(--surface-sunken)', border:0}}>
               {["Apartment","Independent house","Villa","PG / Hostel","Plot / Land"].map(o=><option key={o}>{o}</option>)}
@@ -191,7 +192,7 @@ function HomePage({nav, savedIds, onSave, onUnlock}) {
 
           <div style={{display:'flex', gap:8, marginTop:14, flexWrap:'wrap', alignItems:'center'}}>
             <span style={{fontSize:12, color:'var(--text-faint)'}}>Popular:</span>
-            {["Koramangala", "HSR Layout", "Indiranagar", "Bandra W", "Powai", "Sector 56"].map(loc=>(
+            {["Malviya Nagar", "C-Scheme", "Vaishali Nagar", "Mansarovar", "Jagatpura", "Tonk Road"].map(loc=>(
               <button key={loc} className="chip"
                 onClick={()=>nav('search', null, { q: loc, bhk, type })}
                 style={{cursor:'pointer', background:'transparent', height:26, padding:'0 10px'}}>{loc}</button>
@@ -200,13 +201,13 @@ function HomePage({nav, savedIds, onSave, onUnlock}) {
         </div>
 
         {/* stats strip */}
-        <div style={{
+        <div className="stats-strip-grid" style={{
           display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:0,
           marginTop:64, paddingTop:32, borderTop:'1px solid var(--border)'
         }}>
           {[
             {n:"12,400+", l:"active listings", sub:"updated daily"},
-            {n:"12", l:"cities live", sub:"42 launching '26"},
+            {n:"1", l:"city live", sub:"Jaipur — more soon"},
             {n:"4.8★", l:"on Google", sub:"from 2,800 reviews"},
             {n:"₹0", l:"owner fees", sub:"forever, period."},
           ].map((s, i)=>(
@@ -222,7 +223,7 @@ function HomePage({nav, savedIds, onSave, onUnlock}) {
       {/* ─── THE BIG IDEA ─────────────────────────────────────────────── */}
       <section style={{padding:'72px 28px', background:'var(--surface-sunken)'}}>
         <div style={{maxWidth:1440, margin:'0 auto'}}>
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:80, alignItems:'center'}}>
+          <div className="big-idea-grid" style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:80, alignItems:'center'}}>
             <div>
               <div className="chip" style={{background:'var(--brand-50)', color:'var(--brand-700)', border:0, marginBottom:18}}>The privacy bit ↓</div>
               <h2 className="font-display" style={{fontSize:'clamp(36px, 5vw, 64px)', lineHeight:1, letterSpacing:'-0.04em', fontWeight:800, margin:0}}>
@@ -230,7 +231,7 @@ function HomePage({nav, savedIds, onSave, onUnlock}) {
                 <span style={{color:'var(--brand-500)'}}>Until you decide.</span>
               </h2>
               <p className="muted" style={{fontSize:17, marginTop:24, maxWidth:480, lineHeight:1.55}}>
-                Every listing on Urbify hides the exact address. Tenants pay a small flat fee — 50% of market brokerage — to unlock it.
+                Every listing on Urbify hides the exact address. Tenants pay a small flat fee — half of market rate — to unlock it.
                 That's how serious buyers reach serious owners, without spam.
               </p>
               <div style={{display:'flex', gap:12, marginTop:32}}>
@@ -291,7 +292,7 @@ function HomePage({nav, savedIds, onSave, onUnlock}) {
           </h2>
         </div>
 
-        <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:18}}>
+        <div className="persona-grid" style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:18}}>
           <PersonaCard
             tone="brand"
             tag="Owners"

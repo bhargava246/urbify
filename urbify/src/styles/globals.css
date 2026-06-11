@@ -259,3 +259,239 @@ button { font-family: inherit; }
 /* Lock vibration */
 @keyframes shake { 0%,100%{ transform: translateX(0);} 25%{ transform: translateX(-3px);} 75%{ transform: translateX(3px);} }
 .shake { animation: shake .35s ease both; }
+
+/* =========================================================
+   RESPONSIVE / MOBILE-FIRST
+   ========================================================= */
+
+/* ---- Admin grid helpers ---- */
+.admin-props-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.admin-filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+}
+.form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+
+/* ---- Topbar / SiteHeader ---- */
+.topbar { flex-wrap: wrap; gap: 8px; }
+
+/* ---- Listing grid ---- */
+.listing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+/* ---- Portal shell sidebar ---- */
+.portal-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+}
+
+/* =========================================================
+   SITE HEADER
+   ========================================================= */
+
+.site-nav-desktop { display: flex; }
+.site-hamburger   { display: none !important; }
+
+/* =========================================================
+   BREAKPOINTS
+   ========================================================= */
+
+/* Tablet — ≤ 1024px */
+@media (max-width: 1024px) {
+  .admin-props-stats { grid-template-columns: repeat(2, 1fr); }
+
+  /* Admin dashboard KPI grid */
+  .admin-kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* Moderation queue — stack sidebar + detail */
+  .mod-queue-grid { grid-template-columns: 1fr !important; }
+  .mod-queue-list { position: static !important; max-height: 300px !important; }
+
+  /* Revenue 2-col → 1-col */
+  .rev-city-grid { grid-template-columns: 1fr !important; }
+
+  /* CMS config 2-col → 1-col */
+  .cms-config-grid { grid-template-columns: 1fr !important; }
+}
+
+/* Mobile — ≤ 768px */
+@media (max-width: 768px) {
+  /* Site header — hide desktop links, show hamburger */
+  .site-nav-desktop { display: none !important; }
+  .site-hamburger   { display: flex !important; }
+
+  /* Typography scale */
+  .font-display { font-size: clamp(22px, 5vw, 36px) !important; }
+
+  /* Portal shell — collapse sidebar to top bar */
+  .portal-layout {
+    flex-direction: column !important;
+  }
+  .portal-sidebar {
+    width: 100% !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border);
+  }
+  .portal-sidebar .nav-items {
+    display: flex !important;
+    flex-direction: row !important;
+    overflow-x: auto;
+    padding: 8px 12px;
+    gap: 4px;
+    scrollbar-width: none;
+  }
+  .portal-sidebar .nav-items::-webkit-scrollbar { display: none; }
+  .portal-sidebar .nav-label { display: none; }
+  .portal-sidebar .nav-icon { margin-right: 0 !important; }
+  .portal-main { padding: 16px !important; }
+
+  /* Admin stats — 2 cols on phone */
+  .admin-props-stats { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+
+  /* Dashboard KPI → 2-col */
+  [style*="repeat(4, 1fr)"] { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* Charts → full width */
+  [style*="1.6fr 1fr"] { grid-template-columns: 1fr !important; }
+  [style*="1fr 1fr 1fr"] { grid-template-columns: 1fr 1fr !important; }
+  [style*="1fr 1fr"] { grid-template-columns: 1fr !important; }
+
+  /* Moderation detail gallery */
+  [style*="1.6fr 1fr 1fr"] { grid-template-columns: 1fr 1fr !important; height: auto !important; }
+
+  /* Table cards — horizontal scroll */
+  .card table { min-width: 560px; }
+  .card { overflow-x: auto; }
+
+  /* Admin filters — stack vertically */
+  .admin-filters { flex-direction: column; align-items: stretch; }
+  .admin-filters input,
+  .admin-filters select { width: 100% !important; }
+
+  /* Form grids → single column */
+  .form-grid-2 { grid-template-columns: 1fr; }
+  .form-grid-3 { grid-template-columns: 1fr 1fr; }
+
+  /* Buttons — full-width primary CTAs */
+  .btn-primary-full { width: 100%; }
+
+  /* Modal — full-screen on mobile */
+  [style*="maxWidth:680"],
+  [style*="maxWidth: 680"] {
+    max-width: 100% !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* DashHeader — stack title + actions */
+  .dash-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .dash-header-actions { width: 100%; flex-wrap: wrap; }
+
+  /* Spec grid in moderation */
+  [style*="repeat(4, 1fr)"] { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* Property view modal gallery */
+  .prop-gallery { height: 200px !important; }
+
+  /* Revenue chart — reduce height */
+  svg[viewBox="0 0 1000 280"] { height: 180px !important; }
+
+  /* City revenue table columns */
+  [style*="gridTemplateColumns:'140px"] { grid-template-columns: auto 1fr auto !important; }
+  [style*="gridTemplateColumns: '140px"] { grid-template-columns: auto 1fr auto !important; }
+
+  /* Cohort heatmap — scroll */
+  [style*="gridTemplateColumns:'80px repeat"] { overflow-x: auto; }
+
+  /* Search page map/list toggle */
+  .search-layout { flex-direction: column !important; }
+  .search-map { display: none; }
+  .search-results { width: 100% !important; }
+
+  /* Listing card — compact */
+  .listing-card-row { flex-direction: column; }
+
+  /* Home hero padding */
+  .hero-section { padding: 40px 16px 32px !important; }
+
+  /* Topbar — hide desktop nav links */
+  .topbar nav > a { display: none; }
+  .topbar nav .hamburger { display: flex !important; }
+
+  /* Footer grid → 2-col */
+  .footer-grid { grid-template-columns: 1fr 1fr !important; gap: 24px !important; }
+
+  /* Home hero — search bar: stack to single column */
+  .hero-search-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .hero-search-grid > button { width: 100%; }
+
+  /* Home hero — stats strip: 2×2 */
+  .stats-strip-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 24px 16px !important;
+  }
+  .stats-strip-grid > div {
+    border-left: none !important;
+    padding-left: 0 !important;
+  }
+  .stats-strip-grid > div:nth-child(odd) {
+    border-right: 1px solid var(--border);
+    padding-right: 16px;
+  }
+
+  /* Home "big idea" section: stack columns */
+  .big-idea-grid {
+    grid-template-columns: 1fr !important;
+    gap: 32px !important;
+  }
+
+  /* Home persona cards: single column */
+  .persona-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Auth page: stack 2-col layout */
+  .auth-split {
+    grid-template-columns: 1fr !important;
+  }
+  .auth-panel-left { display: none !important; }
+}
+
+/* Small mobile — ≤ 480px */
+@media (max-width: 480px) {
+  .admin-props-stats { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .form-grid-3 { grid-template-columns: 1fr; }
+  [style*="repeat(4, 1fr)"] { grid-template-columns: 1fr 1fr !important; }
+  .footer-grid { grid-template-columns: 1fr !important; }
+
+  /* Narrower cards */
+  .card { border-radius: var(--r-sm); }
+
+  /* Step tabs in modal — icon-only */
+  .step-tab-label { display: none; }
+
+  /* Reduce table padding */
+  table td, table th { padding: 10px 12px !important; }
+}
+
+/* Print */
+@media print {
+  .portal-sidebar, .tweaks-panel, .topbar { display: none !important; }
+  .portal-main { padding: 0 !important; }
+}
