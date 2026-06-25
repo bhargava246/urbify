@@ -71,7 +71,11 @@ function DetailPage({nav, listingId, savedIds, onSave, onUnlock}) {
 
         <div style={{display:'grid', gridTemplateColumns:'1fr 380px', gap:48, marginTop:36, alignItems:'start'}}>
           {/* LEFT COLUMN */}
-          <div>
+          {/* minWidth:0 lets this grid item shrink below the intrinsic width of the
+              "Similar homes" horizontal-scroll row below — without it, that row's
+              content (6 × 280px cards) forces the whole grid (and page) wider than
+              the viewport, causing a page-level horizontal scrollbar. */}
+          <div style={{minWidth:0}}>
             <div style={{display:'flex', gap:10, marginBottom:14, flexWrap:'wrap'}}>
               {listing.isNew && <span className="chip chip-dark">NEW · {listing.posted}</span>}
               <span className="chip"><Icon.pin/> {listing.locality}, {listing.city}</span>

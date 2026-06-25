@@ -110,7 +110,11 @@ export function UrbifyApp({ initialPage = 'home' }) {
     fetch('/api/v1/properties?limit=18&sortBy=NEWEST')
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (data?.data?.length) setApiListings(data.data.map(normalizeApiListing));
+        // Paginated endpoints are wrapped twice: the global response
+        // interceptor adds {success,data,timestamp}, and buildPaginatedResponse
+        // adds another {data,total,page,limit} inside that. Unwrap both.
+        const arr = data?.data?.data ?? data?.data ?? [];
+        if (Array.isArray(arr) && arr.length) setApiListings(arr.map(normalizeApiListing));
       })
       .catch(() => {})
       .finally(() => setIsLoadingListings(false));

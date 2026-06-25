@@ -202,13 +202,11 @@ function HomePage({nav, savedIds, onSave, onUnlock}) {
 
         {/* stats strip */}
         <div className="stats-strip-grid" style={{
-          display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:0,
+          display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:0,
           marginTop:64, paddingTop:32, borderTop:'1px solid var(--border)'
         }}>
           {[
-            {n:"12,400+", l:"active listings", sub:"updated daily"},
             {n:"1", l:"city live", sub:"Jaipur — more soon"},
-            {n:"4.8★", l:"on Google", sub:"from 2,800 reviews"},
             {n:"₹0", l:"owner fees", sub:"forever, period."},
           ].map((s, i)=>(
             <div key={i} style={{padding:'8px 24px 8px 0', borderLeft: i===0 ? 0 : '1px solid var(--border)', paddingLeft: i===0 ? 0 : 28}}>
@@ -317,16 +315,6 @@ function HomePage({nav, savedIds, onSave, onUnlock}) {
             steps={["Verify RERA ID", "List owners' homes", "Earn full commission"]}
             cta="Become a partner"
             onClick={()=>nav('how')}/>
-        </div>
-      </section>
-
-      {/* ─── TRUST  ───────────────────────────────────────────────── */}
-      <section style={{padding:'48px 28px', borderTop:'1px solid var(--border)'}}>
-        <div style={{maxWidth:1440, margin:'0 auto', display:'flex', alignItems:'center', gap:48, flexWrap:'wrap', justifyContent:'space-between'}}>
-          <div style={{fontSize:13, color:'var(--text-muted)', fontWeight:500}}>As seen in</div>
-          {["MINT", "ET PRIME", "YourStory", "INC42", "Moneycontrol", "TechCrunch"].map(p=>(
-            <div key={p} className="font-display" style={{fontSize:18, fontWeight:700, letterSpacing:'.02em', color:'var(--text-faint)'}}>{p}</div>
-          ))}
         </div>
       </section>
 

@@ -20,6 +20,8 @@ function SearchPage({nav, savedIds, onSave, onUnlock, initialSearchParams}) {
     return isNaN(n) ? [1,2,3,4] : [n];
   });
   const [price, setPrice] = useState([10, 150]); // in ₹k
+  const [priceTouched, setPriceTouched] = useState(false);
+  const [bhkTouched, setBhkTouched] = useState(false);
   const [furn, setFurn] = useState({Unfurnished:false, "Semi-furnished":false, "Fully furnished":false});
   const [type, setType] = useState({Apartment:true, "Independent house":false, Villa:false, "PG / Hostel":false});
   const [sort, setSort] = useState("Newest");
@@ -37,11 +39,16 @@ function SearchPage({nav, savedIds, onSave, onUnlock, initialSearchParams}) {
     const activeFurn = Object.entries(furn).filter(([,v])=>v).map(([k])=>furnMap[k]);
     const params = new URLSearchParams();
     params.set('sortBy', sortMap[sort] || 'NEWEST');
-    params.set('minPrice', String(price[0] * 1000));
-    params.set('maxPrice', String(price[1] * 1000));
+    // Only constrain by price/BHK once the user actively touches those filters —
+    // otherwise the default rental-sized range (₹10k–150k, 1-4 BHK) silently hides
+    // every approved Buy/Land/Commercial/PG listing that falls outside it.
+    if (priceTouched) {
+      params.set('minPrice', String(price[0] * 1000));
+      params.set('maxPrice', String(price[1] * 1000));
+    }
     params.set('limit', '24');
     if (searchQ) params.set('q', searchQ);
-    if (bhkSel.length === 1) params.set('bhk', String(bhkSel[0]));
+    if (bhkTouched && bhkSel.length === 1) params.set('bhk', String(bhkSel[0]));
     if (activeFurn.length === 1) params.set('furnishingStatus', activeFurn[0]);
 
     const timer = setTimeout(() => {
@@ -49,28 +56,37 @@ function SearchPage({nav, savedIds, onSave, onUnlock, initialSearchParams}) {
       fetch(`/api/v1/properties?${params}`)
         .then(r => r.ok ? r.json() : null)
         .then(data => {
-          if (data && Array.isArray(data.data)) {
-            setApiResults(data.data.map(normalizeApiListing));
+          // Double-wrapped: response interceptor {success,data,timestamp} around
+          // buildPaginatedResponse {data,total,page,limit}. Unwrap both levels.
+          const arr = data?.data?.data ?? data?.data;
+          if (Array.isArray(arr)) {
+            setApiResults(arr.map(normalizeApiListing));
           }
         })
         .catch(() => {})
         .finally(() => setIsSearching(false));
     }, 350);
     return () => clearTimeout(timer);
-  }, [bhkSel, price, furn, sort, searchQ]);
+  }, [bhkSel, price, priceTouched, bhkTouched, furn, sort, searchQ]);
 
   // Fall back to context listings (from initial fetch) if API hasn't responded yet
   const baseListings = apiResults ?? ctxListings;
 
   const filtered = useMemo(()=>{
-    let r = baseListings.filter(l => bhkSel.includes(l.bhk) && l.rentK >= price[0] && l.rentK <= price[1]);
+    let r = baseListings.filter(l => {
+      // Listings without a BHK (land/commercial) should never be hidden by the
+      // BHK filter unless the user has actually picked specific BHKs.
+      const bhkOk = !bhkTouched || !l.bhk || bhkSel.includes(l.bhk);
+      const priceOk = !priceTouched || (l.rentK >= price[0] && l.rentK <= price[1]);
+      return bhkOk && priceOk;
+    });
     const anyFurn = Object.values(furn).some(Boolean);
     if (anyFurn) r = r.filter(l => furn[l.furnishing]);
     if (sort === "Price low") r = [...r].sort((a,b)=>a.rentK-b.rentK);
     if (sort === "Price high") r = [...r].sort((a,b)=>b.rentK-a.rentK);
     if (sort === "Area") r = [...r].sort((a,b)=>b.area-a.area);
     return r;
-  }, [baseListings, bhkSel, price, furn, sort]);
+  }, [baseListings, bhkSel, bhkTouched, price, priceTouched, furn, sort]);
 
   return (
     <div>
@@ -78,7 +94,7 @@ function SearchPage({nav, savedIds, onSave, onUnlock, initialSearchParams}) {
       <div style={{borderBottom:'1px solid var(--border)', background:'var(--surface)', padding:'18px 28px'}}>
         <div style={{maxWidth:1440, margin:'0 auto', display:'flex', alignItems:'center', gap:14, flexWrap:'wrap'}}>
           <div style={{fontSize:12, color:'var(--text-muted)'}}>
-            <span style={{cursor:'pointer'}} onClick={()=>nav('home')}>Home</span> / Rent / <span style={{color:'var(--text)'}}>Bangalore</span>
+            <span style={{cursor:'pointer'}} onClick={()=>nav('home')}>Home</span> / Rent / <span style={{color:'var(--text)'}}>Jaipur</span>
           </div>
           <div style={{flex:1}}/>
           <div style={{display:'flex', gap:8, alignItems:'center', minWidth:380}}>
@@ -97,7 +113,7 @@ function SearchPage({nav, savedIds, onSave, onUnlock, initialSearchParams}) {
           <div className="card" style={{padding:0, overflow:'hidden'}}>
             <div style={{padding:'14px 18px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
               <div style={{fontSize:13, fontWeight:600}}>Filters</div>
-              <button className="btn btn-ghost btn-sm" onClick={()=>{setBhkSel([1,2,3,4]); setPrice([10,150]); setFurn({Unfurnished:false,"Semi-furnished":false,"Fully furnished":false});}}>Clear</button>
+              <button className="btn btn-ghost btn-sm" onClick={()=>{setBhkSel([1,2,3,4]); setBhkTouched(false); setPrice([10,150]); setPriceTouched(false); setFurn({Unfurnished:false,"Semi-furnished":false,"Fully furnished":false});}}>Clear</button>
             </div>
 
             <FilterSection title="Property type">
@@ -112,7 +128,7 @@ function SearchPage({nav, savedIds, onSave, onUnlock, initialSearchParams}) {
                   const num = n === "4+" ? 4 : n;
                   const active = bhkSel.includes(num);
                   return (
-                    <button key={n} onClick={()=>setBhkSel(active ? bhkSel.filter(x=>x!==num) : [...bhkSel, num])}
+                    <button key={n} onClick={()=>{setBhkTouched(true); setBhkSel(active ? bhkSel.filter(x=>x!==num) : [...bhkSel, num]);}}
                       style={{
                         padding:'8px 14px', borderRadius:'var(--r-pill)',
                         border:'1px solid var(--border-strong)',
@@ -126,7 +142,7 @@ function SearchPage({nav, savedIds, onSave, onUnlock, initialSearchParams}) {
             </FilterSection>
 
             <FilterSection title="Monthly rent">
-              <RangeSlider min={10} max={150} value={price} onChange={setPrice} format={(v)=>`₹${v}k`}/>
+              <RangeSlider min={10} max={150} value={price} onChange={(v)=>{setPriceTouched(true); setPrice(v);}} format={(v)=>`₹${v}k`}/>
             </FilterSection>
 
             <FilterSection title="Furnishing">
@@ -156,7 +172,7 @@ function SearchPage({nav, savedIds, onSave, onUnlock, initialSearchParams}) {
           <div style={{display:'flex', alignItems:'baseline', justifyContent:'space-between', marginBottom:16, gap:16, flexWrap:'wrap'}}>
             <div>
               <h1 className="font-display" style={{fontSize:28, fontWeight:800, letterSpacing:'-0.03em', margin:0}}>
-                {filtered.length} homes for rent in Bangalore
+                {filtered.length} homes for rent in Jaipur
               </h1>
               <div style={{display:'flex', gap:8, marginTop:10, flexWrap:'wrap'}}>
                 {bhkSel.map(b=><span key={b} className="chip">{b} BHK <Icon.close/></span>)}
@@ -268,6 +284,7 @@ function MapPanel({listings}) {
   // Build markers from listings that have lat/lng; fall back to city-centre coords
   // for listings without coordinates (privacy: only locality is known publicly)
   const CITY_CENTRES = {
+    Jaipur:    [75.7873, 26.9124],
     Bangalore: [77.5946, 12.9716],
     Mumbai:    [72.8777, 19.0760],
     Pune:      [73.8567, 18.5204],
@@ -279,7 +296,7 @@ function MapPanel({listings}) {
   const markers = listings.map((l, i) => {
     // Small random scatter so overlapping pins don't stack exactly
     const scatter = 0.003;
-    const base = CITY_CENTRES[l.city] ?? [77.5946, 12.9716];
+    const base = CITY_CENTRES[l.city] ?? CITY_CENTRES.Jaipur;
     return {
       lng: (l.longitude ?? base[0]) + (Math.random() - 0.5) * scatter,
       lat: (l.latitude  ?? base[1]) + (Math.random() - 0.5) * scatter,
@@ -289,9 +306,9 @@ function MapPanel({listings}) {
     };
   });
 
-  // Centre map on first listing or Bangalore
+  // Centre map on first listing or Jaipur (the only live city)
   const first = markers[0];
-  const center = first ? [first.lng, first.lat] : [77.5946, 12.9716];
+  const center = first ? [first.lng, first.lat] : CITY_CENTRES.Jaipur;
 
   return (
     <div style={{position:'relative', height:'100%', borderRadius:'var(--r-lg)', overflow:'hidden'}}>

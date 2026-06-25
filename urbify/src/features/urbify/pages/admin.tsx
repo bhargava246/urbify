@@ -258,7 +258,10 @@ function AdminModPage({nav}) {
     authFetch('/api/v1/properties/admin/all?status=PENDING_REVIEW&limit=50')
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        const items = (Array.isArray(data) ? data : (data?.data || [])).map(l => ({
+        // Double-wrapped: response interceptor {success,data,timestamp} around
+        // buildPaginatedResponse {data,total,page,limit}. Unwrap both levels.
+        const list = data?.data?.data ?? data?.data ?? [];
+        const items = (Array.isArray(list) ? list : []).map(l => ({
           ...normalizeApiListing(l),
           submittedBy: l.isBrokerListing ? 'Broker listing' : 'Direct owner',
           submitted: new Date(l.createdAt).toLocaleString('en-IN', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }),
@@ -501,8 +504,11 @@ function AdminUsersPage({nav}) {
     authFetch(`/api/v1/users?limit=50&page=1${roleParam}`)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        const items = Array.isArray(data) ? data : (data?.data || []);
-        const total = data?.total ?? items.length;
+        // Double-wrapped: response interceptor {success,data,timestamp} around
+        // buildPaginatedResponse {data,total,page,limit}. Unwrap both levels.
+        const inner = data?.data ?? {};
+        const items = Array.isArray(inner) ? inner : (inner?.data || []);
+        const total = inner?.total ?? items.length;
         setTotalCount(total);
         const colorMap = { OWNER:'#7C3AED', CLIENT:'var(--accent-500)', BROKER:'var(--brand-500)', ADMIN:'#EF4444' };
         setUsers(items.map(u => {
@@ -1203,8 +1209,11 @@ function AdminPropertiesPage({nav}) {
     authFetch(`/api/v1/properties/admin/all?page=${pg}&limit=${PER_PAGE}${statusParam}`)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        const items = Array.isArray(data) ? data : (data?.data || []);
-        const tot = data?.total ?? items.length;
+        // Double-wrapped: response interceptor {success,data,timestamp} around
+        // buildPaginatedResponse {data,total,page,limit}. Unwrap both levels.
+        const inner = data?.data ?? {};
+        const items = Array.isArray(inner) ? inner : (inner?.data || []);
+        const tot = inner?.total ?? items.length;
         setTotal(tot);
         setProperties(items.map(normalizeAdminListing));
         setApiPage(pg);
