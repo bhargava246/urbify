@@ -144,6 +144,29 @@ export class PropertiesController {
     );
   }
 
+  @Post(':id/photos/attach')
+  @Roles(Role.OWNER, Role.BROKER)
+  @UseGuards(RolesGuard)
+  @ApiOperation({
+    summary:
+      'Attach already-uploaded photos (from /uploads/image) to a listing without re-uploading',
+  })
+  async attachPhotos(
+    @Param('id') id: string,
+    @Body() body: { photos: Array<{ s3Key: string; s3Url: string }> },
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.propertiesService.addPhotos(
+      id,
+      user.sub,
+      (body.photos || []).map((p, i) => ({
+        s3Key: p.s3Key,
+        s3Url: p.s3Url,
+        order: i,
+      })),
+    );
+  }
+
   // ─── Admin endpoints ───────────────────────────────────────────────────────────
 
   @Get('admin/all')

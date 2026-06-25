@@ -8,7 +8,7 @@ import {
   furnishingLabel, facingLabel, ageLabel, postedLabel, normalizeApiListing,
   AppDataContext, useAppData, OlaMap,
   Icon, Logo, Img, LockedAddress, ListingCard, Modal,
-  PortalShell, StatCard, StatusBadge, DashHeader,
+  PortalShell, StatCard, StatusBadge, DashHeader, ConsultingCTA,
 } from '../_shared';
 import { authFetch } from '@/lib/authFetch';
 
@@ -192,6 +192,10 @@ function UnlockPage({nav, listing}) {
                   <div style={{height:1, background:'var(--border)', margin:'10px 0'}}/>
                   <Row label="Total" value={`₹${fmt(listing.feeGST)}`} big/>
                 </div>
+              </div>
+
+              <div style={{marginTop:16}}>
+                <ConsultingCTA variant="card"/>
               </div>
             </aside>
           )}

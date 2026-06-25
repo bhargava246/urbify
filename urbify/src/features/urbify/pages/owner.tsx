@@ -25,11 +25,184 @@ const OWNER_NAV = (listingCount?: number, inquiryCount?: number) => [
   { id:'home', label:'Back to site', icon:'↗' },
 ];
 
+// ─── Owner listing view / edit modal ──────────────────────────────────────
+// Shown when an owner clicks "View" on one of their own listings. Used to
+// just redirect straight to the public listing page (the same page a
+// prospective tenant sees) — instead it now shows the listing's own details
+// with an in-place "Edit listing" mode that PATCHes /properties/:id.
+function OwnerListingModal({ listing, onClose, onSaved }) {
+  const raw = listing.raw || listing;
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [form, setForm] = useState({
+    title: raw.title || '',
+    description: raw.description || '',
+    rentOrPrice: raw.rentOrPrice || 0,
+    securityDeposit: raw.securityDeposit ?? 0,
+    isNegotiable: !!raw.isNegotiable,
+    availableFrom: raw.availableFrom ? new Date(raw.availableFrom).toISOString().slice(0, 10) : '',
+    furnishingStatus: raw.furnishingStatus || 'UNFURNISHED',
+    bhk: raw.bhk || 1,
+    areaSqFt: raw.areaSqFt || 0,
+    facing: raw.facing || '',
+    propertyAge: raw.propertyAge ?? 0,
+    floor: raw.floor ?? '',
+    totalFloors: raw.totalFloors ?? '',
+  });
+  const patch = (p) => setForm(f => ({ ...f, ...p }));
+
+  const handleSave = async () => {
+    if (!form.title || form.title.trim().length < 10) {
+      setError('Title must be at least 10 characters.'); return;
+    }
+    if (!form.description || !form.description.trim()) {
+      setError('Description cannot be empty.'); return;
+    }
+    if (!form.rentOrPrice || +form.rentOrPrice <= 0) {
+      setError('Rent / price must be greater than 0.'); return;
+    }
+    if (!form.areaSqFt || +form.areaSqFt < 100) {
+      setError('Carpet area must be at least 100 sq ft.'); return;
+    }
+    setError('');
+    setSaving(true);
+    try {
+      const res = await authFetch(`/api/v1/properties/${raw.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: form.title.trim(),
+          description: form.description.trim(),
+          rentOrPrice: +form.rentOrPrice || 0,
+          securityDeposit: form.securityDeposit === '' ? undefined : +form.securityDeposit,
+          isNegotiable: form.isNegotiable,
+          availableFrom: form.availableFrom || undefined,
+          furnishingStatus: form.furnishingStatus || undefined,
+          bhk: +form.bhk || undefined,
+          areaSqFt: +form.areaSqFt || undefined,
+          facing: form.facing || undefined,
+          propertyAge: form.propertyAge === '' ? undefined : +form.propertyAge,
+          floor: form.floor === '' ? undefined : +form.floor,
+          totalFloors: form.totalFloors === '' ? undefined : +form.totalFloors,
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || 'Failed to update listing');
+      onSaved?.();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal open onClose={onClose} width={680} padding={28}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
+        <div>
+          <div className="font-display" style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em' }}>
+            {editing ? 'Edit listing' : (listing.title || `${listing.bhk} BHK · ${listing.locality}`)}
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>ID {raw.id}</div>
+        </div>
+        <button onClick={onClose} className="btn btn-ghost btn-sm" style={{ padding: '4px 10px' }}>✕</button>
+      </div>
+
+      {error && (
+        <div style={{ marginBottom: 16, padding: '10px 14px', background: '#fef2f2', borderRadius: 'var(--r-md)', fontSize: 13, color: 'var(--danger)' }}>
+          {error}
+        </div>
+      )}
+
+      {!editing ? (
+        <div>
+          <Img src={listing.photo} style={{ width: '100%', aspectRatio: '16/8', borderRadius: 'var(--r-md)', marginBottom: 16, objectFit: 'cover' }} />
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+            <StatusBadge status={listing.status} />
+            <span className="chip">{listing.bhk} BHK</span>
+            <span className="chip">{listing.area} sq ft</span>
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em' }}>
+            ₹{(raw.rentOrPrice || 0).toLocaleString('en-IN')}
+            <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 500 }}>/mo</span>
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>{listing.locality}{listing.city ? `, ${listing.city}` : ''}</div>
+          {raw.description && <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text)', marginTop: 16 }}>{raw.description}</p>}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16, fontSize: 13 }}>
+            <div><span style={{ color: 'var(--text-muted)' }}>Security deposit</span><div style={{ fontWeight: 600, marginTop: 2 }}>₹{(raw.securityDeposit || 0).toLocaleString('en-IN')}</div></div>
+            <div><span style={{ color: 'var(--text-muted)' }}>Furnishing</span><div style={{ fontWeight: 600, marginTop: 2 }}>{listing.furnishing || '—'}</div></div>
+            <div><span style={{ color: 'var(--text-muted)' }}>Facing</span><div style={{ fontWeight: 600, marginTop: 2 }}>{raw.facing || '—'}</div></div>
+            <div><span style={{ color: 'var(--text-muted)' }}>Available from</span><div style={{ fontWeight: 600, marginTop: 2 }}>{listing.available || '—'}</div></div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 24, paddingTop: 18, borderTop: '1px solid var(--border)' }}>
+            <button className="btn btn-outline" onClick={onClose}>Close</button>
+            <button className="btn btn-brand" onClick={() => setEditing(true)}>Edit listing</button>
+          </div>
+        </div>
+      ) : (
+        <div>
+          <Field label="Title">
+            <input className="input" value={form.title} onChange={e => patch({ title: e.target.value })} />
+          </Field>
+          <Field label="Description" style={{ marginTop: 14 }}>
+            <textarea className="input" rows={3} value={form.description} onChange={e => patch({ description: e.target.value })} style={{ height: 'auto', padding: '12px 14px', resize: 'vertical', lineHeight: 1.5 }} />
+          </Field>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 14 }}>
+            <Field label="Monthly rent / price (₹)">
+              <input className="input" type="number" value={form.rentOrPrice} onChange={e => patch({ rentOrPrice: e.target.value })} />
+            </Field>
+            <Field label="Security deposit (₹)">
+              <input className="input" type="number" value={form.securityDeposit} onChange={e => patch({ securityDeposit: e.target.value })} />
+            </Field>
+            <Field label="BHK">
+              <input className="input" type="number" min={1} max={10} value={form.bhk} onChange={e => patch({ bhk: e.target.value })} />
+            </Field>
+            <Field label="Carpet area (sq ft)">
+              <input className="input" type="number" value={form.areaSqFt} onChange={e => patch({ areaSqFt: e.target.value })} />
+            </Field>
+            <Field label="Furnishing">
+              <select className="input select" value={form.furnishingStatus} onChange={e => patch({ furnishingStatus: e.target.value })}>
+                <option value="UNFURNISHED">Unfurnished</option>
+                <option value="SEMI_FURNISHED">Semi-furnished</option>
+                <option value="FULLY_FURNISHED">Fully furnished</option>
+              </select>
+            </Field>
+            <Field label="Facing">
+              <select className="input select" value={form.facing || ''} onChange={e => patch({ facing: e.target.value })}>
+                <option value="">— Select —</option>
+                <option value="EAST">East</option><option value="WEST">West</option><option value="NORTH">North</option><option value="SOUTH">South</option>
+              </select>
+            </Field>
+            <Field label="Available from">
+              <input className="input" type="date" value={form.availableFrom} onChange={e => patch({ availableFrom: e.target.value })} />
+            </Field>
+            <Field label="Negotiable?">
+              <select className="input select" value={form.isNegotiable ? 'yes' : 'no'} onChange={e => patch({ isNegotiable: e.target.value === 'yes' })}>
+                <option value="no">No</option><option value="yes">Yes</option>
+              </select>
+            </Field>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 24, paddingTop: 18, borderTop: '1px solid var(--border)' }}>
+            <button className="btn btn-outline" onClick={() => { setEditing(false); setError(''); }} disabled={saving}>Cancel</button>
+            <button className="btn btn-brand" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
 // ─── Owner Dashboard ──────────────────────────────────────────────────────
 function OwnerDashPage({nav}) {
   const { authUser } = useAppData();
   const [myListings, setMyListings] = useState([]);
   const [loadingListings, setLoadingListings] = useState(true);
+  // The listing the owner clicked "View" on — shown in a modal with view +
+  // edit modes instead of redirecting away to the public listing page.
+  const [viewListing, setViewListing] = useState(null);
 
   const loadListings = useCallback(() => {
     if (!localStorage.getItem('urb_access')) { setLoadingListings(false); return; }
@@ -39,6 +212,10 @@ function OwnerDashPage({nav}) {
         const arr = Array.isArray(data) ? data : (data.data || []);
         setMyListings(arr.map(l => ({
           ...normalizeApiListing(l),
+          // Keep the raw DB record too — normalizeApiListing only keeps
+          // display-friendly fields, but the edit form needs the originals
+          // (rentOrPrice, securityDeposit, furnishingStatus, etc.).
+          raw: l,
           status: l.status === 'ACTIVE' ? 'live' : l.status === 'PENDING_REVIEW' ? 'pending' : l.status === 'RENTED' ? 'rented' : 'paused',
           unlocks: l.unlockCount || 0,
           daysLeft: l.expiresAt ? Math.max(0, Math.ceil((new Date(l.expiresAt) - Date.now()) / 86400000)) : '—',
@@ -88,6 +265,7 @@ function OwnerDashPage({nav}) {
   } : OWNER_USER;
 
   return (
+    <>
     <PortalShell user={portalUser} navItems={navItems} current="ownerDash" onNav={(id)=>nav(id)}>
       <DashHeader
         title={`Welcome back, ${firstName}.`}
@@ -158,7 +336,7 @@ function OwnerDashPage({nav}) {
                 <td style={{padding:'14px 22px', fontWeight:600}}>₹{l.rentK}k</td>
                 <td style={{padding:'14px 22px', textAlign:'right'}}>
                   <div style={{display:'inline-flex', gap:4}}>
-                    <button className="btn btn-ghost btn-sm" onClick={()=>nav('detail', l.id)}>View</button>
+                    <button className="btn btn-ghost btn-sm" onClick={()=>setViewListing(l)}>View</button>
                     <button className="btn btn-outline btn-sm" onClick={() => handleTogglePause(l.id, l.status)}>{l.status === 'paused' ? 'Resume' : 'Pause'}</button>
                     <button className="btn btn-outline btn-sm" style={{color:'var(--danger)', borderColor:'var(--danger)'}} onClick={() => handleDelete(l.id)}>Delete</button>
                   </div>
@@ -205,6 +383,14 @@ function OwnerDashPage({nav}) {
         </div>
       </div>
     </PortalShell>
+    {viewListing && (
+      <OwnerListingModal
+        listing={viewListing}
+        onClose={()=>setViewListing(null)}
+        onSaved={()=>{ setViewListing(null); loadListings(); }}
+      />
+    )}
+    </>
   );
 }
 
@@ -213,6 +399,7 @@ function OwnerListPage({nav}) {
   const { authUser } = useAppData();
   const [myListings, setMyListings] = useState([]);
   const [loadingList, setLoadingList] = useState(true);
+  const [viewListing, setViewListing] = useState(null);
 
   const loadListings = useCallback(() => {
     const token = localStorage.getItem('urb_access');
@@ -223,6 +410,7 @@ function OwnerListPage({nav}) {
         const arr = Array.isArray(data) ? data : (data.data || []);
         setMyListings(arr.map(l => ({
           ...normalizeApiListing(l),
+          raw: l,
           status: l.status === 'ACTIVE' ? 'live' : l.status === 'PENDING_REVIEW' ? 'pending' : l.status === 'RENTED' ? 'rented' : l.status === 'EXPIRED' ? 'expired' : 'paused',
           unlocks: l.unlockCount || 0,
           viewCount: l.viewCount || 0,
@@ -265,6 +453,7 @@ function OwnerListPage({nav}) {
   } : OWNER_USER;
 
   return (
+    <>
     <PortalShell user={portalUser} navItems={OWNER_NAV()} current="ownerList" onNav={(id)=>nav(id)}>
       <DashHeader title="My listings"
         subtitle={loadingList ? 'Loading…' : `${myListings.length} listings · ${myListings.filter(l=>l.status==='live').length} live`}
@@ -288,6 +477,7 @@ function OwnerListPage({nav}) {
               </div>
 
               <div style={{display:'flex', gap:6, marginTop:14}}>
+                <button className="btn btn-outline btn-sm" onClick={() => setViewListing(l)} style={{flex:1}}>View</button>
                 <button className="btn btn-outline btn-sm" onClick={() => handleTogglePause(l.id, l.status)} style={{flex:1}}>{l.status === 'paused' ? 'Resume' : 'Pause'}</button>
                 <button className="btn btn-outline btn-sm" onClick={() => handleDelete(l.id)} style={{flex:1, color:'var(--danger)', borderColor:'var(--danger)'}}>Delete</button>
               </div>
@@ -296,6 +486,14 @@ function OwnerListPage({nav}) {
         ))}
       </div>
     </PortalShell>
+    {viewListing && (
+      <OwnerListingModal
+        listing={viewListing}
+        onClose={()=>setViewListing(null)}
+        onSaved={()=>{ setViewListing(null); loadListings(); }}
+      />
+    )}
+    </>
   );
 }
 
@@ -372,6 +570,12 @@ function OwnerNewPage({nav}) {
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  // Photos are uploaded to S3 immediately (for instant preview) by StepPhotos,
+  // but the listing doesn't exist yet at that point — so we hold onto the
+  // resulting {key, url} pairs here and attach them to the listing once it's
+  // created in handleSubmit. Without this, uploads succeed but never get
+  // linked to any listing in the DB.
+  const [uploadedPhotos, setUploadedPhotos] = useState([]);
   const steps = ["Type","Details","Location","Pricing","Photos","Review"];
 
   // Shared form state — all steps read/write here
@@ -436,6 +640,23 @@ function OwnerNewPage({nav}) {
       const raw = await res.json();
       const data = raw?.data ?? raw;
       if (!res.ok) throw new Error(raw.message || data.message || 'Failed to create listing');
+
+      // Attach any photos uploaded during the Photos step to the new listing.
+      const readyPhotos = uploadedPhotos.filter(p => p.url && p.key);
+      if (data?.id && readyPhotos.length) {
+        try {
+          await authFetch(`/api/v1/properties/${data.id}/photos/attach`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              photos: readyPhotos.map(p => ({ s3Key: p.key, s3Url: p.url })),
+            }),
+          });
+        } catch {
+          // Listing is already created; don't block navigation on a photo-attach hiccup.
+        }
+      }
+
       // listing created — navigate to dashboard
       nav('ownerDash');
     } catch(e) {
@@ -471,7 +692,7 @@ function OwnerNewPage({nav}) {
         {step === 1 && <StepDetails formData={formData} patchForm={patchForm} onNext={()=>setStep(2)} onBack={()=>setStep(0)}/>}
         {step === 2 && <StepLocation onNext={()=>setStep(3)} onBack={()=>setStep(1)} formData={formData} setFormData={setFormData}/>}
         {step === 3 && <StepPricing formData={formData} patchForm={patchForm} onNext={()=>setStep(4)} onBack={()=>setStep(2)}/>}
-        {step === 4 && <StepPhotos onNext={()=>setStep(5)} onBack={()=>setStep(3)}/>}
+        {step === 4 && <StepPhotos onNext={()=>setStep(5)} onBack={()=>setStep(3)} photos={uploadedPhotos} setPhotos={setUploadedPhotos}/>}
         {step === 5 && <StepReview formData={formData} onNext={handleSubmit} onBack={()=>setStep(4)} submitting={submitting}/>}
       </div>
     </PortalShell>
@@ -525,9 +746,26 @@ function StepType({formData, patchForm, onNext}) {
 }
 
 function StepDetails({formData, patchForm, onNext, onBack}) {
+  const [error, setError] = useState('');
+
+  const handleNext = () => {
+    if (!formData.areaSqFt || formData.areaSqFt < 100) {
+      setError('Carpet area must be at least 100 sq ft.'); return;
+    }
+    if (formData.floor != null && formData.totalFloors != null && formData.floor > formData.totalFloors) {
+      setError('Floor number cannot be greater than total floors.'); return;
+    }
+    if (!formData.availableFrom) {
+      setError('Please pick an availability date.'); return;
+    }
+    setError('');
+    onNext();
+  };
+
   return (
     <div>
       <h2 className="font-display" style={{fontSize:24, fontWeight:700, letterSpacing:'-0.02em', margin:'0 0 6px'}}>Tell us about the property</h2>
+      {error && <div style={{marginTop:14, padding:'10px 14px', background:'#fef2f2', borderRadius:'var(--r-md)', fontSize:13, color:'var(--danger)'}}>{error}</div>}
 
       <div style={{marginTop:20}}>
         <label style={{fontSize:12, color:'var(--text-muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.08em'}}>Configuration</label>
@@ -574,7 +812,7 @@ function StepDetails({formData, patchForm, onNext, onBack}) {
         </Field>
       </div>
 
-      <WizardNav onBack={onBack} onNext={onNext}/>
+      <WizardNav onBack={onBack} onNext={handleNext}/>
     </div>
   );
 }
@@ -588,6 +826,17 @@ function StepLocation({onNext, onBack, formData, setFormData}) {
 
   const loc = formData?.location ?? {};
   const setLoc = (patch) => setFormData?.(f => ({ ...f, location: { ...f.location, ...patch } }));
+  const [locError, setLocError] = useState('');
+
+  const handleNext = () => {
+    if (!loc.city || !loc.city.trim()) { setLocError('City is required.'); return; }
+    if (!loc.state || !loc.state.trim()) { setLocError('State is required.'); return; }
+    if (!loc.locality || !loc.locality.trim()) { setLocError('Locality / area is required.'); return; }
+    if (!loc.pincode || !/^\d{6}$/.test(loc.pincode.trim())) { setLocError('Pincode must be a valid 6-digit number.'); return; }
+    if (!loc.fullAddress || loc.fullAddress.trim().length < 10) { setLocError('Please enter the full address (at least 10 characters) — it stays encrypted and hidden from tenants.'); return; }
+    setLocError('');
+    onNext();
+  };
 
   // ── GPS detect ───────────────────────────────────────────────────────────
   const detectLocation = async () => {
@@ -666,6 +915,7 @@ function StepLocation({onNext, onBack, formData, setFormData}) {
     <div>
       <h2 className="font-display" style={{fontSize:24, fontWeight:700, letterSpacing:'-0.02em', margin:'0 0 6px'}}>Where is it located?</h2>
       <p className="muted" style={{margin:'0 0 20px', fontSize:14}}>Drop a pin or detect your GPS location to auto-fill the address.</p>
+      {locError && <div style={{margin:'0 0 16px', padding:'10px 14px', background:'#fef2f2', borderRadius:'var(--r-md)', fontSize:13, color:'var(--danger)'}}>{locError}</div>}
 
       {/* GPS button */}
       <button
@@ -795,7 +1045,7 @@ function StepLocation({onNext, onBack, formData, setFormData}) {
         Drag the pin or click anywhere on the map to refine the location.
       </p>
 
-      <WizardNav onBack={onBack} onNext={onNext}/>
+      <WizardNav onBack={onBack} onNext={handleNext}/>
     </div>
   );
 }
@@ -803,9 +1053,23 @@ function StepLocation({onNext, onBack, formData, setFormData}) {
 function StepPricing({formData, patchForm, onNext, onBack}) {
   const rent = formData.rentOrPrice || 0;
   const fee = Math.round((rent / 30) * 7.5 * 1.18);
+  const [error, setError] = useState('');
+
+  const handleNext = () => {
+    if (!formData.rentOrPrice || formData.rentOrPrice <= 0) {
+      setError('Monthly rent / price must be greater than 0.'); return;
+    }
+    if (formData.securityDeposit != null && formData.securityDeposit < 0) {
+      setError('Security deposit cannot be negative.'); return;
+    }
+    setError('');
+    onNext();
+  };
+
   return (
     <div>
       <h2 className="font-display" style={{fontSize:24, fontWeight:700, letterSpacing:'-0.02em', margin:'0 0 6px'}}>Set your price</h2>
+      {error && <div style={{marginTop:14, padding:'10px 14px', background:'#fef2f2', borderRadius:'var(--r-md)', fontSize:13, color:'var(--danger)'}}>{error}</div>}
 
       <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginTop:20}}>
         <Field label="Monthly rent (₹)">
@@ -838,13 +1102,15 @@ function StepPricing({formData, patchForm, onNext, onBack}) {
         </div>
       </div>
 
-      <WizardNav onBack={onBack} onNext={onNext}/>
+      <WizardNav onBack={onBack} onNext={handleNext}/>
     </div>
   );
 }
 
-function StepPhotos({onNext, onBack}) {
-  const [photos, setPhotos] = useState([]); // [{preview, file, uploading, url, error}]
+function StepPhotos({onNext, onBack, photos, setPhotos}) {
+  // photos/setPhotos are lifted to the parent wizard so the uploaded S3
+  // keys/URLs survive into handleSubmit and get attached to the listing
+  // once it's created. Shape: [{id, preview, file, uploading, url, key, error}]
   const [uploadError, setUploadError] = useState('');
   const fileInputRef = useRef(null);
 
@@ -877,8 +1143,10 @@ function StepPhotos({onNext, onBack}) {
           method:'POST', body:form,
         });
         const raw = await res.json();
-        const url = raw?.data?.s3Url || raw?.s3Url;
-        setPhotos(p => p.map(ph => ph.id === photo.id ? {...ph, uploading:false, url} : ph));
+        const uploaded = raw?.data ?? raw ?? {};
+        const url = uploaded.s3Url;
+        const key = uploaded.s3Key;
+        setPhotos(p => p.map(ph => ph.id === photo.id ? {...ph, uploading:false, url, key} : ph));
       } catch(e) {
         setPhotos(p => p.map(ph => ph.id === photo.id ? {...ph, uploading:false, error:'Upload failed'} : ph));
       }
@@ -890,6 +1158,14 @@ function StepPhotos({onNext, onBack}) {
   const handleDrop = (e) => { e.preventDefault(); addFiles(e.dataTransfer.files); };
 
   const uploadedCount = photos.filter(p => p.url).length;
+  const stillUploading = photos.some(p => p.uploading);
+
+  const handleNext = () => {
+    if (stillUploading) { setUploadError('Please wait for all photos to finish uploading.'); return; }
+    if (uploadedCount < 3) { setUploadError('Add at least 3 photos before continuing.'); return; }
+    setUploadError('');
+    onNext();
+  };
 
   return (
     <div>
@@ -956,17 +1232,27 @@ function StepPhotos({onNext, onBack}) {
         <input className="input" placeholder="https://youtube.com/... or Matterport URL"/>
       </Field>
 
-      <WizardNav onBack={onBack} onNext={onNext} nextLabel="Continue"/>
+      <WizardNav onBack={onBack} onNext={handleNext} nextLabel="Continue"/>
     </div>
   );
 }
 
 function StepReview({formData, onNext, onBack, submitting}) {
   const loc = formData.location || {};
+  const [agreed, setAgreed] = useState(true);
+  const [error, setError] = useState('');
+
+  const handleNext = () => {
+    if (!agreed) { setError("Please confirm you agree to Urbify's terms before submitting."); return; }
+    setError('');
+    onNext();
+  };
+
   return (
     <div>
       <h2 className="font-display" style={{fontSize:24, fontWeight:700, letterSpacing:'-0.02em', margin:'0 0 6px'}}>Review & submit</h2>
       <p className="muted" style={{margin:'0 0 24px', fontSize:14}}>Last look before your listing goes to our moderation team. We review in &lt; 2 hours.</p>
+      {error && <div style={{margin:'0 0 20px', padding:'10px 14px', background:'#fef2f2', borderRadius:'var(--r-md)', fontSize:13, color:'var(--danger)'}}>{error}</div>}
 
       <div style={{display:'grid', gridTemplateColumns:'1.4fr 1fr', gap:18}}>
         <div className="card" style={{padding:20}}>
@@ -1001,13 +1287,13 @@ function StepReview({formData, onNext, onBack, submitting}) {
           </ol>
 
           <label style={{display:'flex', alignItems:'flex-start', gap:10, marginTop:18, fontSize:12, color:'var(--text-muted)', cursor:'pointer'}}>
-            <input type="checkbox" defaultChecked style={{marginTop:2}}/>
+            <input type="checkbox" checked={agreed} onChange={e=>setAgreed(e.target.checked)} style={{marginTop:2}}/>
             I agree to Urbify's terms and confirm this property is mine to list.
           </label>
         </div>
       </div>
 
-      <WizardNav onBack={onBack} onNext={onNext} nextLabel={submitting ? 'Submitting…' : 'Submit for review'}/>
+      <WizardNav onBack={onBack} onNext={handleNext} nextLabel={submitting ? 'Submitting…' : 'Submit for review'}/>
     </div>
   );
 }

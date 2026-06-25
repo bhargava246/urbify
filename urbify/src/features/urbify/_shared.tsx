@@ -524,25 +524,98 @@ function DashHeader({title, subtitle, actions}) {
 
 
 
+// ─── Helper: consulting contact CTA ────────────────────────────────────
+// A dedicated channel for owners/tenants who want a human to talk through
+// their decision before they commit — shown site-wide in the footer, and
+// in a more compact form on the checkout/payment flow where reassurance
+// matters most.
+const CONSULTANT = {
+  name: 'Lavesh Bhargava',
+  phone: '+91 92510 70288',
+  phoneHref: 'tel:+919251070288',
+  email: 'laveshbhargava8@gmail.com',
+};
+
+function ConsultingCTA({ variant = 'banner' }: { variant?: 'banner' | 'card' }) {
+  if (variant === 'card') {
+    return (
+      <div className="card" style={{padding:20, borderRadius:'var(--r-lg)', background:'var(--surface-sunken)'}}>
+        <div style={{display:'flex', alignItems:'flex-start', gap:12}}>
+          <div style={{
+            width:40, height:40, borderRadius:'50%', flexShrink:0,
+            background:'var(--brand-500)', color:'#fff',
+            display:'grid', placeItems:'center', fontSize:16,
+          }}><Icon.phone/></div>
+          <div>
+            <div style={{fontSize:13, fontWeight:700, letterSpacing:'-0.01em'}}>Not sure this is the right move?</div>
+            <div style={{fontSize:12.5, color:'var(--text-muted)', marginTop:4, lineHeight:1.55}}>
+              Talk it through with {CONSULTANT.name}, our property consultant, before you pay — no charge, no obligation.
+            </div>
+          </div>
+        </div>
+        <div style={{display:'flex', gap:8, marginTop:14}}>
+          <a href={CONSULTANT.phoneHref} className="btn btn-outline btn-sm" style={{flex:1, textDecoration:'none', textAlign:'center'}}>
+            <Icon.phone/> Call
+          </a>
+          <a href={`mailto:${CONSULTANT.email}`} className="btn btn-outline btn-sm" style={{flex:1, textDecoration:'none', textAlign:'center'}}>
+            ✉ Email
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      maxWidth:1440, margin:'0 auto', padding:'32px 28px',
+      display:'flex', justifyContent:'space-between', alignItems:'center',
+      gap:24, flexWrap:'wrap',
+      borderBottom:'1px solid rgba(255,255,255,.12)',
+    }}>
+      <div style={{display:'flex', alignItems:'center', gap:16, minWidth:280}}>
+        <div style={{
+          width:48, height:48, borderRadius:'50%', flexShrink:0,
+          background:'rgba(255,255,255,.1)', color:'var(--bg)',
+          display:'grid', placeItems:'center', fontSize:20,
+        }}><Icon.phone/></div>
+        <div>
+          <div className="font-display" style={{fontSize:17, fontWeight:700, letterSpacing:'-0.015em'}}>Prefer to speak with someone first?</div>
+          <div style={{fontSize:13, opacity:.65, marginTop:3, lineHeight:1.5}}>
+            {CONSULTANT.name} offers free, no-obligation consulting for owners and tenants navigating a listing or move.
+          </div>
+        </div>
+      </div>
+      <div style={{display:'flex', gap:10, flexWrap:'wrap'}}>
+        <a href={CONSULTANT.phoneHref} className="btn btn-sm" style={{background:'#fff', color:'var(--text)', border:0, textDecoration:'none'}}>
+          <Icon.phone/> {CONSULTANT.phone}
+        </a>
+        <a href={`mailto:${CONSULTANT.email}`} className="btn btn-outline btn-sm" style={{borderColor:'rgba(255,255,255,.3)', color:'var(--bg)', textDecoration:'none'}}>
+          ✉ {CONSULTANT.email}
+        </a>
+      </div>
+    </div>
+  );
+}
+
 // ─── Helper: footer ─────────────────────────────────────────────────────
 function Footer({nav}: any) {
   return (
-    <footer style={{background:'var(--text)', color:'var(--bg)', padding:'72px 28px 32px', marginTop:0}}>
-      <div style={{maxWidth:1440, margin:'0 auto'}}>
-        <div className="footer-grid" style={{display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr 1fr', gap:48, paddingBottom:48, borderBottom:'1px solid rgba(255,255,255,.12)'}}>
+    <footer style={{background:'var(--text)', color:'var(--bg)', padding:'0 28px 32px', marginTop:0}}>
+      <ConsultingCTA variant="banner"/>
+      <div style={{maxWidth:1440, margin:'0 auto', paddingTop:48}}>
+        <div className="footer-grid" style={{display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr', gap:48, paddingBottom:48, borderBottom:'1px solid rgba(255,255,255,.12)'}}>
           <div>
             <div className="font-display" style={{fontSize:36, fontWeight:800, letterSpacing:'-0.04em'}}>urbify</div>
             <p style={{maxWidth:300, fontSize:14, opacity:.6, marginTop:16, lineHeight:1.6}}>
               Real estate, fair & simple. Owners list free, tenants pay one fee, brokers keep it all.
             </p>
           </div>
-          <FooterCol title="Rent" items={["Bangalore","Mumbai","Pune","Delhi NCR","Hyderabad","All cities →"]}/>
           <FooterCol title="Buy" items={["Apartments","Villas","Plots","Commercial","Premium homes"]}/>
           <FooterCol title="Company" items={[{l:"How it works", k:'how'}, "Pricing", "Blog", "About", "Press"]} nav={nav}/>
           <FooterCol title="Support" items={["FAQ", "Contact", "Refund policy", "RERA compliance", "Grievance officer"]}/>
         </div>
         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:32, fontSize:12, opacity:.5}}>
-          <div>© 2026 Urbify Technologies Pvt. Ltd. · CIN U72200KA2024PTC123456</div>
+          <div>© 2026 Urbify Technologies Pvt. Ltd.</div>
           <div style={{display:'flex', gap:16}}><span>Privacy</span><span>Terms</span><span>Cookies</span></div>
         </div>
       </div>
@@ -606,4 +679,5 @@ export {
   // portal shell
   PortalShell, StatCard, StatusBadge, DashHeader,
   Footer, FooterCol, Faq, MiniMap,
+  ConsultingCTA,
 };
