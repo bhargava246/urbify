@@ -298,6 +298,9 @@ button { font-family: inherit; }
   flex-shrink: 0;
 }
 
+/* ---- Portal shell ---- */
+.portal-main { flex: 1; min-width: 0; }
+
 /* =========================================================
    SITE HEADER
    ========================================================= */
@@ -332,6 +335,41 @@ button { font-family: inherit; }
   /* Site header — hide desktop links, show hamburger */
   .site-nav-desktop { display: none !important; }
   .site-hamburger   { display: flex !important; }
+
+  /* Portal shell: inline display:grid conflicts with flex-direction override */
+  .portal-layout { display: flex !important; }
+  .portal-sidebar { height: auto !important; position: static !important; }
+
+  /* Detail page gallery */
+  .detail-gallery { grid-template-columns: 1fr !important; height: 260px !important; border-radius: var(--r-lg) !important; }
+  .detail-gallery > div:not(:first-child) { display: none !important; }
+
+  /* Detail page main 2-col layout */
+  .detail-main-grid { grid-template-columns: 1fr !important; }
+  .detail-main-grid aside { position: static !important; }
+
+  /* Detail page sub-grids */
+  .detail-nbhd-grid { grid-template-columns: 1fr !important; }
+  .detail-spec-grid { grid-template-columns: 1fr 1fr !important; }
+  .detail-amenities-grid { grid-template-columns: 1fr 1fr !important; }
+
+  /* Search page */
+  .search-page-grid { grid-template-columns: 1fr !important; padding: 16px !important; gap: 0 !important; }
+  .search-filter-aside { position: static !important; max-height: 400px !important; overflow-y: auto !important; margin-bottom: 16px; }
+  .search-map-aside { display: none !important; }
+  .search-header-bar { flex-wrap: wrap !important; gap: 12px !important; }
+  .search-header-right { min-width: 0 !important; flex: 1 1 100% !important; }
+
+  /* Owner wizard */
+  .step-type-grid { grid-template-columns: 1fr 1fr !important; }
+  .step-photos-grid { grid-template-columns: 1fr 1fr !important; }
+  .step-review-grid { grid-template-columns: 1fr !important; }
+  .wizard-progress { overflow-x: auto; scrollbar-width: none; }
+  .wizard-progress::-webkit-scrollbar { display: none; }
+  .wizard-progress > div { min-width: 70px; }
+
+  /* Owner listings page */
+  .owner-listings-grid { grid-template-columns: 1fr 1fr !important; }
 
   /* Typography scale */
   .font-display { font-size: clamp(22px, 5vw, 36px) !important; }
