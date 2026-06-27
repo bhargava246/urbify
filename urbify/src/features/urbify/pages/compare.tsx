@@ -14,7 +14,14 @@ import {
 function ComparePage({nav, savedIds, onSave, onUnlock}) {
   const { listings } = useAppData();
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [picked, setPicked] = useState([]); // start empty — user picks from search results
+  // Pre-populate from shortlist page if compare IDs were stored in sessionStorage
+  const [picked, setPicked] = useState(() => {
+    try {
+      const stored = sessionStorage.getItem('urbify_compare_ids');
+      if (stored) { sessionStorage.removeItem('urbify_compare_ids'); return JSON.parse(stored); }
+    } catch {}
+    return [];
+  });
 
   const items = picked.map(id => listings.find(l=>l.id === id)).filter(Boolean);
   const cols = items.length;
@@ -73,7 +80,10 @@ function ComparePage({nav, savedIds, onSave, onUnlock}) {
 
   return (
     <div>
-      <section style={{padding:'48px 28px 24px', maxWidth:1440, margin:'0 auto'}}>
+      <div style={{padding:'16px 28px', maxWidth:1440, margin:'0 auto'}}>
+        <button className="btn btn-ghost btn-sm" onClick={()=>nav('search')}><Icon.back/> Back to search</button>
+      </div>
+      <section style={{padding:'16px 28px 24px', maxWidth:1440, margin:'0 auto'}}>
         <div style={{fontSize:12, color:'var(--text-muted)', marginBottom:18}}>
           <span style={{cursor:'pointer'}} onClick={()=>nav('clientDash')}>Dashboard</span> / <span style={{color:'var(--text)'}}>Compare</span>
         </div>

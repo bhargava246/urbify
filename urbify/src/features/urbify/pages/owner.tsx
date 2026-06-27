@@ -215,7 +215,7 @@ function OwnerDashPage({nav}) {
           // display-friendly fields, but the edit form needs the originals
           // (rentOrPrice, securityDeposit, furnishingStatus, etc.).
           raw: l,
-          status: l.status === 'ACTIVE' ? 'live' : l.status === 'PENDING_REVIEW' ? 'pending' : l.status === 'RENTED' ? 'rented' : 'paused',
+          status: l.status === 'ACTIVE' ? 'live' : l.status === 'PENDING_REVIEW' ? 'pending' : l.status === 'RENTED' ? 'rented' : l.status === 'EXPIRED' ? 'expired' : 'paused',
           unlocks: l.unlockCount || 0,
           daysLeft: l.expiresAt ? Math.max(0, Math.ceil((new Date(l.expiresAt) - Date.now()) / 86400000)) : '—',
         })));
@@ -480,10 +480,21 @@ function OwnerListPage({nav}) {
 
   return (
     <>
-    <PortalShell user={portalUser} navItems={OWNER_NAV()} current="ownerList" onNav={(id)=>nav(id)}>
+    <PortalShell user={portalUser} navItems={OWNER_NAV(myListings.length || undefined)} current="ownerList" onNav={(id)=>nav(id)}>
       <DashHeader title="My listings"
         subtitle={loadingList ? 'Loading…' : `${myListings.length} listings · ${myListings.filter(l=>l.status==='live').length} live`}
         actions={<button className="btn btn-brand btn-sm" onClick={()=>nav('ownerNew')}>＋ New listing</button>}/>
+
+      {loadingList ? (
+        <div style={{padding:'48px 0', textAlign:'center', color:'var(--text-muted)', fontSize:14}}>Loading listings…</div>
+      ) : myListings.length === 0 ? (
+        <div className="card" style={{padding:48, textAlign:'center'}}>
+          <div style={{fontSize:36, marginBottom:12}}>🏠</div>
+          <div style={{fontWeight:600}}>No listings yet</div>
+          <p style={{color:'var(--text-muted)', fontSize:13, marginTop:6}}>Add your first property listing to get started.</p>
+          <button className="btn btn-brand btn-sm" style={{marginTop:14}} onClick={()=>nav('ownerNew')}>＋ Add listing</button>
+        </div>
+      ) : null}
 
       <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:16}}>
         {myListings.map(l=>(
@@ -504,8 +515,10 @@ function OwnerListPage({nav}) {
 
               <div style={{display:'flex', gap:6, marginTop:14}}>
                 <button className="btn btn-outline btn-sm" onClick={() => setViewListing(l)} style={{flex:1}}>View</button>
-                <button className="btn btn-outline btn-sm" onClick={() => handleTogglePause(l.id, l.status)} style={{flex:1}}>{l.status === 'paused' ? 'Resume' : 'Pause'}</button>
-                <button className="btn btn-outline btn-sm" onClick={() => handleDelete(l.id)} style={{flex:1, color:'var(--danger)', borderColor:'var(--danger)'}}>Delete</button>
+                {(l.status === 'live' || l.status === 'paused') && (
+                  <button className="btn btn-outline btn-sm" onClick={() => handleTogglePause(l.id, l.status)} style={{flex:1}}>{l.status === 'paused' ? 'Resume' : 'Pause'}</button>
+                )}
+                <button className="btn btn-outline btn-sm" onClick={() => handleDelete(l.id)} style={{color:'var(--danger)', borderColor:'var(--danger)'}}>Delete</button>
               </div>
             </div>
           </div>
@@ -673,15 +686,15 @@ function OwnerNewPage({nav}) {
 
   // Shared form state — all steps read/write here
   const [formData, setFormData] = useState({
-    listingType: 'RESIDENTIAL_RENTAL',
-    bhk: 2,
-    areaSqFt: 1200,
+    listingType: '',
+    bhk: null,
+    areaSqFt: null,
     floor: null,
     totalFloors: null,
-    furnishingStatus: 'UNFURNISHED',
+    furnishingStatus: '',
     propertyAge: 0,
     facing: null,
-    propertySubType: 'apartment',
+    propertySubType: '',
     availableFrom: new Date().toISOString().slice(0,10),
     rentOrPrice: 35000,
     securityDeposit: 70000,
@@ -701,15 +714,15 @@ function OwnerNewPage({nav}) {
     const payload = {
       listingType:      formData.listingType,
       locality:         loc.locality || 'Unknown',
-      city:             loc.city     || 'Bangalore',
-      state:            loc.state    || 'Karnataka',
-      pincode:          loc.pincode  || '560001',
+      city:             loc.city     || 'Jaipur',
+      state:            loc.state    || 'Rajasthan',
+      pincode:          loc.pincode  || '302001',
       fullAddress:      loc.fullAddress || loc.locality || 'Address not specified',
       latitude:         loc.lat  || undefined,
       longitude:        loc.lng  || undefined,
       landmark:         loc.landmark || undefined,
-      title:            `${formData.bhk} BHK ${formData.propertySubType} for ${formData.listingType === 'RESIDENTIAL_RENTAL' ? 'Rent' : 'Sale'} in ${loc.locality || 'Bangalore'}`,
-      description:      `Spacious ${formData.bhk} BHK ${formData.propertySubType} in ${loc.locality || 'Bangalore'}. ${formData.furnishingStatus?.replace(/_/g,' ')}. Available from ${formData.availableFrom}.`,
+      title:            `${formData.bhk} BHK ${formData.propertySubType} for ${formData.listingType === 'RESIDENTIAL_RENTAL' ? 'Rent' : 'Sale'} in ${loc.locality || 'Jaipur'}`,
+      description:      `Spacious ${formData.bhk} BHK ${formData.propertySubType} in ${loc.locality || 'Jaipur'}. ${formData.furnishingStatus?.replace(/_/g,' ')}. Available from ${formData.availableFrom}.`,
       propertySubType:  formData.propertySubType,
       bhk:              formData.bhk,
       areaSqFt:         formData.areaSqFt,
@@ -782,7 +795,7 @@ function OwnerNewPage({nav}) {
       )}
 
       <div className="card" style={{padding:36, maxWidth:880}}>
-        {step === 0 && <StepType formData={formData} patchForm={patchForm} onNext={()=>setStep(1)}/>}
+        {step === 0 && <StepType formData={formData} patchForm={patchForm} onNext={()=>setStep(1)} onBack={()=>nav('ownerDash')}/>}
         {step === 1 && <StepDetails formData={formData} patchForm={patchForm} onNext={()=>setStep(2)} onBack={()=>setStep(0)}/>}
         {step === 2 && <StepLocation onNext={()=>setStep(3)} onBack={()=>setStep(1)} formData={formData} setFormData={setFormData}/>}
         {step === 3 && <StepPricing formData={formData} patchForm={patchForm} onNext={()=>setStep(4)} onBack={()=>setStep(2)}/>}
@@ -793,16 +806,16 @@ function OwnerNewPage({nav}) {
   );
 }
 
-function WizardNav({onBack, onNext, nextLabel = "Continue"}) {
+function WizardNav({onBack, onNext, nextLabel = "Continue", backLabel = "← Back"}) {
   return (
     <div style={{display:'flex', justifyContent:'space-between', marginTop:32, paddingTop:24, borderTop:'1px solid var(--border)'}}>
-      <button className="btn btn-outline" onClick={onBack} disabled={!onBack} style={{visibility: onBack ? 'visible' : 'hidden'}}>← Back</button>
+      <button className="btn btn-outline" onClick={onBack} disabled={!onBack} style={{visibility: onBack ? 'visible' : 'hidden'}}>{backLabel}</button>
       <button className="btn btn-brand" onClick={onNext}>{nextLabel} <Icon.arrow/></button>
     </div>
   );
 }
 
-function StepType({formData, patchForm, onNext}) {
+function StepType({formData, patchForm, onNext, onBack}) {
   const typeMap = { 'res-rent':'RESIDENTIAL_RENTAL', 'com-rent':'COMMERCIAL_RENTAL', 'res-sale':'RESIDENTIAL_SALE', 'com-sale':'COMMERCIAL_SALE', 'land':'LAND', 'pg':'RESIDENTIAL_RENTAL' };
   const subTypeMap = { 'res-rent':'apartment', 'com-rent':'office', 'res-sale':'apartment', 'com-sale':'office', 'land':'land', 'pg':'pg' };
   const types = [
@@ -813,15 +826,24 @@ function StepType({formData, patchForm, onNext}) {
     { id:"land",     title:"Land / plot", sub:"Sell or lease land", emoji:"🌳" },
     { id:"pg",       title:"PG / hostel", sub:"Shared accommodation", emoji:"🛏" },
   ];
-  const sel = Object.keys(typeMap).find(k => typeMap[k] === formData.listingType && subTypeMap[k] === formData.propertySubType) || 'res-rent';
+  const [error, setError] = useState('');
+  const sel = Object.keys(typeMap).find(k => typeMap[k] === formData.listingType && subTypeMap[k] === formData.propertySubType) || null;
+
+  const handleNext = () => {
+    if (!sel) { setError('Please select a listing type before continuing.'); return; }
+    setError('');
+    onNext();
+  };
+
   return (
     <div>
       <h2 className="font-display" style={{fontSize:24, fontWeight:700, letterSpacing:'-0.02em', margin:'0 0 6px'}}>What are you listing?</h2>
       <p className="muted" style={{margin:0, fontSize:14}}>Pick the category that fits best — you can change details later.</p>
+      {error && <div style={{marginTop:14, padding:'10px 14px', background:'#fef2f2', borderRadius:'var(--r-md)', fontSize:13, color:'var(--danger)'}}>{error}</div>}
 
       <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:12, marginTop:24}}>
         {types.map(t=>(
-          <button key={t.id} onClick={()=>patchForm({ listingType: typeMap[t.id], propertySubType: subTypeMap[t.id] })} style={{
+          <button key={t.id} onClick={()=>{ patchForm({ listingType: typeMap[t.id], propertySubType: subTypeMap[t.id] }); setError(''); }} style={{
             padding:'22px 18px', borderRadius:'var(--r-md)',
             border:'1.5px solid', borderColor: sel===t.id ? 'var(--text)' : 'var(--border)',
             background: sel===t.id ? 'var(--surface-sunken)' : 'transparent',
@@ -834,75 +856,138 @@ function StepType({formData, patchForm, onNext}) {
         ))}
       </div>
 
-      <WizardNav onNext={onNext}/>
+      <WizardNav onBack={onBack} onNext={handleNext} nextLabel="Continue" backLabel="Cancel"/>
     </div>
   );
 }
 
 function StepDetails({formData, patchForm, onNext, onBack}) {
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState<Record<string,string>>({});
+
+  const err = (field: string) => errors[field];
+  const errStyle = (field: string) => err(field) ? { border: '1.5px solid var(--danger)' } : {};
+
+  const validate = () => {
+    const e: Record<string,string> = {};
+    if (!formData.bhk) e.bhk = 'Select a BHK configuration.';
+    if (!formData.areaSqFt || +formData.areaSqFt < 100)
+      e.areaSqFt = 'Carpet area must be at least 100 sq ft.';
+    if (!formData.facing)
+      e.facing = 'Select facing direction.';
+    if (formData.floor && !formData.totalFloors)
+      e.totalFloors = 'Enter total floors when floor number is set.';
+    if (formData.totalFloors && !formData.floor)
+      e.floor = 'Enter your floor when total floors is set.';
+    if (formData.floor && formData.totalFloors && +formData.floor > +formData.totalFloors)
+      e.floor = 'Floor cannot exceed total floors.';
+    if (!formData.furnishingStatus)
+      e.furnishingStatus = 'Select furnishing status.';
+    if (!formData.availableFrom)
+      e.availableFrom = 'Pick an availability date.';
+    return e;
+  };
 
   const handleNext = () => {
-    if (!formData.areaSqFt || formData.areaSqFt < 100) {
-      setError('Carpet area must be at least 100 sq ft.'); return;
-    }
-    if (formData.floor != null && formData.totalFloors != null && formData.floor > formData.totalFloors) {
-      setError('Floor number cannot be greater than total floors.'); return;
-    }
-    if (!formData.availableFrom) {
-      setError('Please pick an availability date.'); return;
-    }
-    setError('');
+    const e = validate();
+    setErrors(e);
+    if (Object.keys(e).length > 0) return;
     onNext();
   };
+
+  const firstError = Object.values(errors)[0];
 
   return (
     <div>
       <h2 className="font-display" style={{fontSize:24, fontWeight:700, letterSpacing:'-0.02em', margin:'0 0 6px'}}>Tell us about the property</h2>
-      {error && <div style={{marginTop:14, padding:'10px 14px', background:'#fef2f2', borderRadius:'var(--r-md)', fontSize:13, color:'var(--danger)'}}>{error}</div>}
+      {firstError && (
+        <div style={{marginTop:14, padding:'10px 14px', background:'#fef2f2', borderRadius:'var(--r-md)', fontSize:13, color:'var(--danger)'}}>
+          {firstError}
+        </div>
+      )}
 
       <div style={{marginTop:20}}>
-        <label style={{fontSize:12, color:'var(--text-muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.08em'}}>Configuration</label>
-        <div style={{display:'flex', gap:6, marginTop:8, flexWrap:'wrap'}}>
+        <label style={{fontSize:12, fontWeight:600, textTransform:'uppercase', letterSpacing:'.08em',
+          color: err('bhk') ? 'var(--danger)' : 'var(--text-muted)'}}>
+          Configuration {err('bhk') && <span style={{fontWeight:400, textTransform:'none', letterSpacing:0}}>— {err('bhk')}</span>}
+        </label>
+        <div style={{display:'flex', gap:6, marginTop:8, flexWrap:'wrap',
+          padding: err('bhk') ? '8px' : 0,
+          borderRadius: err('bhk') ? 'var(--r-md)' : 0,
+          border: err('bhk') ? '1.5px solid var(--danger)' : 'none',
+          background: err('bhk') ? '#fef2f2' : 'transparent',
+        }}>
           {[1,2,3,4,"4+"].map(n=>{
             const v = n==='4+' ? 5 : n;
             const a = formData.bhk === v;
-            return <button key={n} onClick={()=>patchForm({bhk:v})} style={{padding:'10px 16px', borderRadius:'var(--r-pill)', border:'1.5px solid', borderColor: a?'var(--text)':'var(--border)', background: a?'var(--text)':'transparent', color: a?'var(--bg)':'var(--text)', fontWeight:600, fontSize:13, cursor:'pointer'}}>{n} BHK</button>;
+            return <button key={n} onClick={()=>{ patchForm({bhk:v}); setErrors(e=>({...e, bhk:undefined})); }} style={{padding:'10px 16px', borderRadius:'var(--r-pill)', border:'1.5px solid', borderColor: a?'var(--text)':'var(--border)', background: a?'var(--text)':'transparent', color: a?'var(--bg)':'var(--text)', fontWeight:600, fontSize:13, cursor:'pointer'}}>{n} BHK</button>;
           })}
         </div>
       </div>
 
       <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginTop:24}}>
-        <Field label="Carpet area">
+        <Field label={<>Carpet area {err('areaSqFt') && <span style={{color:'var(--danger)', fontWeight:400, textTransform:'none', letterSpacing:0}}>— {err('areaSqFt')}</span>}</>}>
           <div style={{display:'flex', alignItems:'center', gap:6}}>
-            <input className="input" type="number" value={formData.areaSqFt} onChange={e=>patchForm({areaSqFt:+e.target.value||0})} style={{flex:1}}/>
+            <input className="input" type="number" min={0}
+              value={formData.areaSqFt || ''}
+              onChange={e=>{ patchForm({areaSqFt:+e.target.value||0}); setErrors(er=>({...er,areaSqFt:undefined})); }}
+              style={{flex:1, ...errStyle('areaSqFt')}}
+              placeholder="e.g. 1200"/>
             <span className="muted" style={{fontSize:13}}>sq ft</span>
           </div>
         </Field>
-        <Field label="Total floors / your floor">
+
+        <Field label={<>Floor / Total floors {(err('floor')||err('totalFloors')) && <span style={{color:'var(--danger)', fontWeight:400, textTransform:'none', letterSpacing:0}}>— {err('floor')||err('totalFloors')}</span>}</>}>
           <div style={{display:'flex', gap:8}}>
-            <input className="input" type="number" value={formData.floor||''} onChange={e=>patchForm({floor:+e.target.value||null})} placeholder="Floor" style={{flex:1}}/>
-            <input className="input" type="number" value={formData.totalFloors||''} onChange={e=>patchForm({totalFloors:+e.target.value||null})} placeholder="Total" style={{flex:1}}/>
+            <input className="input" type="number" min={0}
+              value={formData.floor||''}
+              onChange={e=>{ patchForm({floor:+e.target.value||null}); setErrors(er=>({...er,floor:undefined})); }}
+              placeholder="Your floor"
+              style={{flex:1, ...errStyle('floor')}}/>
+            <input className="input" type="number" min={0}
+              value={formData.totalFloors||''}
+              onChange={e=>{ patchForm({totalFloors:+e.target.value||null}); setErrors(er=>({...er,totalFloors:undefined})); }}
+              placeholder="Total"
+              style={{flex:1, ...errStyle('totalFloors')}}/>
           </div>
         </Field>
-        <Field label="Facing">
-          <select className="input select" value={formData.facing||''} onChange={e=>patchForm({facing:e.target.value||null})}>
+
+        <Field label={<>Facing {err('facing') && <span style={{color:'var(--danger)', fontWeight:400, textTransform:'none', letterSpacing:0}}>— {err('facing')}</span>}</>}>
+          <select className="input select"
+            value={formData.facing||''}
+            onChange={e=>{ patchForm({facing:e.target.value||null}); setErrors(er=>({...er,facing:undefined})); }}
+            style={errStyle('facing')}>
             <option value="">— Select —</option>
-            <option value="EAST">East</option><option value="WEST">West</option><option value="NORTH">North</option><option value="SOUTH">South</option>
+            <option value="EAST">East</option>
+            <option value="WEST">West</option>
+            <option value="NORTH">North</option>
+            <option value="SOUTH">South</option>
           </select>
         </Field>
+
         <Field label="Property age (years)">
-          <input className="input" type="number" value={formData.propertyAge??''} onChange={e=>patchForm({propertyAge:+e.target.value||0})} placeholder="0 = new construction"/>
+          <input className="input" type="number" min={0}
+            value={formData.propertyAge??''}
+            onChange={e=>patchForm({propertyAge:+e.target.value||0})}
+            placeholder="0 = new construction"/>
         </Field>
-        <Field label="Furnishing">
-          <select className="input select" value={formData.furnishingStatus||'UNFURNISHED'} onChange={e=>patchForm({furnishingStatus:e.target.value})}>
+
+        <Field label={<>Furnishing {err('furnishingStatus') && <span style={{color:'var(--danger)', fontWeight:400, textTransform:'none', letterSpacing:0}}>— {err('furnishingStatus')}</span>}</>}>
+          <select className="input select"
+            value={formData.furnishingStatus||''}
+            onChange={e=>{ patchForm({furnishingStatus:e.target.value}); setErrors(er=>({...er,furnishingStatus:undefined})); }}
+            style={errStyle('furnishingStatus')}>
+            <option value="">— Select —</option>
             <option value="UNFURNISHED">Unfurnished</option>
             <option value="SEMI_FURNISHED">Semi-furnished</option>
             <option value="FULLY_FURNISHED">Fully furnished</option>
           </select>
         </Field>
-        <Field label="Available from">
-          <input className="input" type="date" value={formData.availableFrom} onChange={e=>patchForm({availableFrom:e.target.value})}/>
+
+        <Field label={<>Available from {err('availableFrom') && <span style={{color:'var(--danger)', fontWeight:400, textTransform:'none', letterSpacing:0}}>— {err('availableFrom')}</span>}</>}>
+          <input className="input" type="date"
+            value={formData.availableFrom}
+            onChange={e=>{ patchForm({availableFrom:e.target.value}); setErrors(er=>({...er,availableFrom:undefined})); }}
+            style={errStyle('availableFrom')}/>
         </Field>
       </div>
 
@@ -1003,7 +1088,7 @@ function StepLocation({onNext, onBack, formData, setFormData}) {
     } catch (_) {}
   }, [loc.city, loc.locality, loc.pincode, loc.state, loc.fullAddress]);
 
-  const mapCenter = (loc.lng && loc.lat) ? [loc.lng, loc.lat] : [77.6177, 12.9352];
+  const mapCenter = (loc.lng && loc.lat) ? [loc.lng, loc.lat] : [75.7873, 26.9124];
 
   return (
     <div>
@@ -1034,7 +1119,7 @@ function StepLocation({onNext, onBack, formData, setFormData}) {
             className="input"
             value={loc.city || ''}
             onChange={e => setLoc({ city: e.target.value })}
-            placeholder="e.g. Bangalore"
+            placeholder="e.g. Jaipur"
           />
         </Field>
         <Field label="State">
@@ -1042,7 +1127,7 @@ function StepLocation({onNext, onBack, formData, setFormData}) {
             className="input"
             value={loc.state || ''}
             onChange={e => setLoc({ state: e.target.value })}
-            placeholder="e.g. Karnataka"
+            placeholder="e.g. Rajasthan"
           />
         </Field>
       </div>
@@ -1055,7 +1140,7 @@ function StepLocation({onNext, onBack, formData, setFormData}) {
             onChange={e => handleLocalityChange(e.target.value)}
             onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
             onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-            placeholder="e.g. Koramangala 4th Block"
+            placeholder="e.g. Vaishali Nagar"
             autoComplete="off"
           />
         </Field>
@@ -1090,7 +1175,7 @@ function StepLocation({onNext, onBack, formData, setFormData}) {
             className="input"
             value={loc.pincode || ''}
             onChange={e => setLoc({ pincode: e.target.value })}
-            placeholder="e.g. 560034"
+            placeholder="e.g. 302001"
             maxLength={6}
           />
         </Field>

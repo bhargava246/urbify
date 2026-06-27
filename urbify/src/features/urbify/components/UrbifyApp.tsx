@@ -28,12 +28,13 @@ import { ClientDashPage, BrokerDashPage,
 import { AdminDashPage, AdminModPage, AdminUsersPage,
          AdminRevenuePage, AdminCmsPage,
          AdminPropertiesPage }                           from '../pages/admin';
-import { AboutPage, FaqPage, ContactPage }               from '../pages/info';
+import { AboutPage, FaqPage, ContactPage, PressPage }    from '../pages/info';
 import { CityPage, LocalityPage }                        from '../pages/city';
 import { BlogPage, BlogPostPage }                        from '../pages/blog';
 import { BrokerPortfolioPage, ClientTxPage,
          SettingsPage, HelpPage, NotFoundPage }          from '../pages/extra';
-import { TermsPage, PrivacyPage, RefundPage }            from '../pages/legal';
+import { TermsPage, PrivacyPage, RefundPage,
+         ReraPage, GrievancePage, CookiesPage }          from '../pages/legal';
 import { ComparePage }                                   from '../pages/compare';
 import { NotificationsPage }                             from '../pages/notifications';
 
@@ -68,8 +69,8 @@ const AUTH_PAGES = new Set(['auth']);
 
 const ALL_PAGES = [
   'home','search','rent','detail','unlock','auth','how','pricing',
-  'about','faq','contact','city','locality','blog','blogPost','compare',
-  'terms','privacy','refund','help','notFound',
+  'about','faq','contact','press','city','locality','blog','blogPost','compare',
+  'terms','privacy','refund','rera','grievance','cookies','help','notFound',
   'ownerDash','ownerList','ownerInquiries','ownerNew',
   'clientDash','clientShort','clientTx','clientSearches',
   'brokerDash','brokerList','brokerInq','brokerCommission',
@@ -297,9 +298,13 @@ export function UrbifyApp({ initialPage = 'home' }) {
         {page==='blog'      && <BlogPage     nav={nav}/>}
         {page==='blogPost'  && <BlogPostPage nav={nav}/>}
         {page==='compare'   && <ComparePage  {...pub}/>}
-        {page==='terms'     && <TermsPage    nav={nav}/>}
+        {page==='terms'     && <TermsPage     nav={nav}/>}
         {page==='privacy'   && <PrivacyPage  nav={nav}/>}
         {page==='refund'    && <RefundPage   nav={nav}/>}
+        {page==='rera'      && <ReraPage     nav={nav}/>}
+        {page==='grievance' && <GrievancePage nav={nav}/>}
+        {page==='cookies'   && <CookiesPage  nav={nav}/>}
+        {page==='press'     && <PressPage    nav={nav}/>}
         {page==='help'      && <HelpPage     nav={nav}/>}
         {page==='notFound'  && <NotFoundPage nav={nav}/>}
         {/* Owner */}

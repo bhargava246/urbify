@@ -108,6 +108,15 @@ export class UsersService {
           isActive: true,
           isBanned: true,
           createdAt: true,
+          ownerProfile:  { select: { fullName: true } },
+          brokerProfile: { select: { fullName: true, reraId: true } },
+          clientProfile: { select: { fullName: true } },
+          _count: {
+            select: {
+              listings: true,
+              unlocks:  true,
+            },
+          },
         },
       }),
       this.prisma.user.count({ where }),

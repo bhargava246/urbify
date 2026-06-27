@@ -11,6 +11,30 @@ import {
   PortalShell, StatCard, StatusBadge, DashHeader, Footer, MiniMap,
 } from '../_shared';
 
+// Converts any YouTube URL variant to an embed URL, returns null if not a YouTube URL.
+function getYouTubeEmbedUrl(url) {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    let videoId = null;
+    if (u.hostname === 'youtu.be') {
+      videoId = u.pathname.slice(1).split('?')[0];
+    } else if (u.hostname.includes('youtube.com')) {
+      if (u.pathname.startsWith('/shorts/')) {
+        videoId = u.pathname.split('/shorts/')[1]?.split('?')[0];
+      } else if (u.pathname === '/watch') {
+        videoId = u.searchParams.get('v');
+      } else if (u.pathname.startsWith('/embed/')) {
+        videoId = u.pathname.split('/embed/')[1]?.split('?')[0];
+      }
+    }
+    if (!videoId) return null;
+    return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`;
+  } catch {
+    return null;
+  }
+}
+
 function DetailPage({nav, listingId, savedIds, onSave, onUnlock}) {
   const [visitRequested, setVisitRequested] = React.useState(false);
   const { listings: ctxListings } = useAppData();
@@ -18,6 +42,24 @@ function DetailPage({nav, listingId, savedIds, onSave, onUnlock}) {
   const [loadingListing, setLoadingListing] = useState(false);
   const [activePhoto, setActivePhoto] = useState(0);
   const [carouselPaused, setCarouselPaused] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxPhoto, setLightboxPhoto] = useState(0);
+
+  const openLightbox = useCallback((idx: number) => {
+    setLightboxPhoto(idx);
+    setLightboxOpen(true);
+  }, []);
+
+  const closeLightbox = useCallback(() => setLightboxOpen(false), []);
+
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeLightbox();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [lightboxOpen, closeLightbox]);
 
   useEffect(() => {
     if (!listingId) return;
@@ -77,7 +119,14 @@ function DetailPage({nav, listingId, savedIds, onSave, onUnlock}) {
           <button className="btn btn-outline btn-sm" onClick={()=>onSave(listing.id)}>
             <Icon.heart filled={savedIds.includes(listing.id)}/> {savedIds.includes(listing.id) ? "Shortlisted" : "Shortlist"}
           </button>
-          <button className="btn btn-outline btn-sm">Share</button>
+          <button className="btn btn-outline btn-sm" onClick={()=>{
+            const url = window.location.href;
+            if (navigator.share) {
+              navigator.share({ title: listing.title || 'Check this property on Urbify', url }).catch(()=>{});
+            } else {
+              navigator.clipboard?.writeText(url).then(()=>alert('Link copied!')).catch(()=>alert('Copy: ' + url));
+            }
+          }}>Share</button>
         </div>
 
         {/* gallery — carousel */}
@@ -115,7 +164,8 @@ function DetailPage({nav, listingId, savedIds, onSave, onUnlock}) {
                 <Img
                   key={cur}
                   src={photos[cur]}
-                  style={{width:'100%', height:'100%', objectFit:'cover', transition:'opacity .35s'}}
+                  onClick={() => openLightbox(cur)}
+                  style={{width:'100%', height:'100%', objectFit:'cover', transition:'opacity .35s', cursor:'zoom-in'}}
                 />
 
                 {/* Counter badge */}
@@ -166,9 +216,9 @@ function DetailPage({nav, listingId, savedIds, onSave, onUnlock}) {
               {photos.length > 1 && (
                 <div style={{display:'flex', gap:6, padding:'8px 0', overflowX:'auto'}}>
                   {photos.map((p, i) => (
-                    <div key={i} onClick={() => setActivePhoto(i)} style={{
+                    <div key={i} onClick={() => { setActivePhoto(i); openLightbox(i); }} style={{
                       flexShrink:0, width:80, height:58, borderRadius:'var(--r-sm)', overflow:'hidden',
-                      cursor:'pointer', border:'2px solid', transition:'border-color .2s',
+                      cursor:'zoom-in', border:'2px solid', transition:'border-color .2s',
                       borderColor: i === cur ? 'var(--brand-500)' : 'transparent',
                     }}>
                       <img src={p} alt="" style={{width:'100%', height:'100%', objectFit:'cover'}}/>
@@ -267,15 +317,47 @@ function DetailPage({nav, listingId, savedIds, onSave, onUnlock}) {
               </div>
             )}
 
+            {/* video tour */}
+            {(() => {
+              const embedUrl = getYouTubeEmbedUrl(listing._api?.videoUrl);
+              if (!embedUrl) return null;
+              return (
+                <div style={{marginTop:40}}>
+                  <SectionTitle>Video tour</SectionTitle>
+                  <div style={{
+                    marginTop:16, borderRadius:'var(--r-lg)', overflow:'hidden',
+                    position:'relative', paddingBottom:'56.25%', height:0,
+                    border:'1px solid var(--border)',
+                  }}>
+                    <iframe
+                      src={embedUrl}
+                      title="Property video tour"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      style={{
+                        position:'absolute', top:0, left:0,
+                        width:'100%', height:'100%', border:0,
+                      }}
+                    />
+                  </div>
+                  <div style={{marginTop:8, fontSize:12, color:'var(--text-muted)', display:'flex', alignItems:'center', gap:6}}>
+                    <span style={{fontSize:14}}>▶</span>
+                    Watch the full property walkthrough above
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* locality */}
             <div style={{marginTop:40}}>
               <SectionTitle>The neighbourhood</SectionTitle>
               <div style={{borderRadius:'var(--r-lg)', overflow:'hidden', height:260, marginTop:16, border:'1px solid var(--border)'}}>
-                <MiniMap label={listing.locality} lat={listing._api?.latitude} lng={listing._api?.longitude}/>
+                <MiniMap label={listing.locality} lat={listing._api?.latitude} lng={listing._api?.longitude} locationCircle={true}/>
               </div>
-              <div style={{marginTop:10, fontSize:13, color:'var(--text-muted)'}}>
-                <Icon.pin/> {listing.locality}, {listing.city}{listing.state ? `, ${listing.state}` : ''}
-                {listing._api?.pincode ? ` – ${listing._api.pincode}` : ''}
+              <div style={{marginTop:10, fontSize:13, color:'var(--text-muted)', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:6}}>
+                <span><Icon.pin/> {listing.locality}, {listing.city}{listing.state ? `, ${listing.state}` : ''}
+                {listing._api?.pincode ? ` – ${listing._api.pincode}` : ''}</span>
+                <span style={{fontSize:12, color:'var(--text-muted)', opacity:0.7}}>Exact location shared after booking</span>
               </div>
             </div>
 
@@ -396,6 +478,104 @@ function DetailPage({nav, listingId, savedIds, onSave, onUnlock}) {
           </aside>
         </div>
       </div>
+
+      {/* Lightbox */}
+      {lightboxOpen && (() => {
+        const photos = listing?.photos || [];
+        const lb = Math.min(lightboxPhoto, photos.length - 1);
+        const lbPrev = () => setLightboxPhoto(i => (i - 1 + photos.length) % photos.length);
+        const lbNext = () => setLightboxPhoto(i => (i + 1) % photos.length);
+        const navBtn: React.CSSProperties = {
+          position:'absolute', top:'50%', transform:'translateY(-50%)',
+          background:'rgba(255,255,255,.12)', backdropFilter:'blur(6px)',
+          border:'1px solid rgba(255,255,255,.2)', color:'#fff',
+          borderRadius:'50%', width:52, height:52, cursor:'pointer',
+          fontSize:26, fontWeight:300, display:'flex', alignItems:'center', justifyContent:'center',
+          zIndex:10002, transition:'background .2s',
+        };
+        return (
+          <div
+            onClick={closeLightbox}
+            style={{
+              position:'fixed', inset:0, zIndex:10000,
+              background:'rgba(0,0,0,.92)', backdropFilter:'blur(8px)',
+              display:'flex', alignItems:'center', justifyContent:'center',
+            }}
+          >
+            {/* Close button */}
+            <button
+              onClick={closeLightbox}
+              style={{
+                position:'fixed', top:20, right:20, zIndex:10003,
+                background:'rgba(255,255,255,.15)', backdropFilter:'blur(6px)',
+                border:'1px solid rgba(255,255,255,.25)', color:'#fff',
+                borderRadius:'50%', width:44, height:44, cursor:'pointer',
+                fontSize:20, display:'flex', alignItems:'center', justifyContent:'center',
+              }}
+            >✕</button>
+
+            {/* Counter */}
+            <div style={{
+              position:'fixed', top:20, left:'50%', transform:'translateX(-50%)',
+              zIndex:10003, background:'rgba(0,0,0,.55)', backdropFilter:'blur(4px)',
+              color:'#fff', padding:'5px 16px', borderRadius:99,
+              fontSize:13, fontWeight:600,
+            }}>
+              {lb + 1} / {photos.length}
+            </div>
+
+            {/* Image container — stop propagation so clicking the image itself doesn't close */}
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{
+                position:'relative', maxWidth:'92vw', maxHeight:'90vh',
+                display:'flex', alignItems:'center', justifyContent:'center',
+              }}
+            >
+              <img
+                src={photos[lb]}
+                alt=""
+                style={{
+                  maxWidth:'92vw', maxHeight:'90vh',
+                  objectFit:'contain', borderRadius:'var(--r-lg)',
+                  boxShadow:'0 32px 96px rgba(0,0,0,.8)',
+                  display:'block',
+                }}
+              />
+
+              {photos.length > 1 && <>
+                <button onClick={lbPrev} style={{...navBtn, left:-70}}>‹</button>
+                <button onClick={lbNext} style={{...navBtn, right:-70}}>›</button>
+              </>}
+            </div>
+
+            {/* Thumbnail strip */}
+            {photos.length > 1 && (
+              <div
+                onClick={e => e.stopPropagation()}
+                style={{
+                  position:'fixed', bottom:20, left:'50%', transform:'translateX(-50%)',
+                  display:'flex', gap:6, zIndex:10003,
+                  background:'rgba(0,0,0,.5)', backdropFilter:'blur(6px)',
+                  padding:'8px 10px', borderRadius:'var(--r-md)',
+                  maxWidth:'90vw', overflowX:'auto',
+                }}
+              >
+                {photos.map((p, i) => (
+                  <div key={i} onClick={() => setLightboxPhoto(i)} style={{
+                    flexShrink:0, width:60, height:44, borderRadius:'var(--r-sm)', overflow:'hidden',
+                    cursor:'pointer', border:'2px solid', transition:'border-color .2s',
+                    borderColor: i === lb ? '#fff' : 'transparent',
+                    opacity: i === lb ? 1 : 0.55,
+                  }}>
+                    <img src={p} alt="" style={{width:'100%', height:'100%', objectFit:'cover'}}/>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

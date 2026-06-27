@@ -97,7 +97,10 @@ function BlogPage({nav}) {
 
   return (
     <div>
-      <section style={{padding:'72px 28px 24px', maxWidth:1440, margin:'0 auto'}}>
+      <div style={{padding:'16px 28px', maxWidth:1440, margin:'0 auto'}}>
+        <button className="btn btn-ghost btn-sm" onClick={()=>nav('home')}><Icon.back/> Back</button>
+      </div>
+      <section style={{padding:'16px 28px 24px', maxWidth:1440, margin:'0 auto'}}>
         <div className="chip" style={{background:'transparent', border:'1px solid var(--border-strong)', marginBottom:24}}>Notes from the field</div>
         <h1 className="font-display" style={{fontSize:'clamp(48px, 7vw, 96px)', fontWeight:800, letterSpacing:'-0.045em', lineHeight:.96, margin:0}}>
           The Urbify journal.

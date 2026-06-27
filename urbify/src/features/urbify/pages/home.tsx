@@ -14,7 +14,7 @@ import {
 // ---- home.jsx ----
 // home.jsx — Urbify homepage
 
-function LocationAutocomplete({ value, onChange, placeholder = "City, locality or landmark…" }) {
+function LocationAutocomplete({ value, onChange, onCoordsChange, placeholder = "City, locality or landmark…" }) {
   const [inputVal, setInputVal] = useState(value || '');
   const [suggestions, setSuggestions] = useState([]);
   const [open, setOpen] = useState(false);
@@ -43,8 +43,11 @@ function LocationAutocomplete({ value, onChange, placeholder = "City, locality o
         const data = await res.json();
         const preds = (data.predictions || []).slice(0, 6).map(p => ({
           label: p.description || p.structured_formatting?.main_text || p.place_id,
+          mainText: p.structured_formatting?.main_text || p.description || p.place_id,
           secondary: p.structured_formatting?.secondary_text || '',
           placeId: p.place_id,
+          lat: p.geometry?.location?.lat,
+          lng: p.geometry?.location?.lng,
         }));
         setSuggestions(preds);
         setOpen(preds.length > 0);
@@ -57,11 +60,37 @@ function LocationAutocomplete({ value, onChange, placeholder = "City, locality o
     return () => clearTimeout(timer);
   }, [inputVal, hasFocused]);
 
-  const select = (item) => {
+  const select = async (item) => {
     setInputVal(item.label);
     setSuggestions([]);
     setOpen(false);
-    onChange(item.label);
+    // Use mainText (e.g. "Koramangala") not full description as the search term —
+    // full label like "Koramangala, Bengaluru, Karnataka, India" won't match any DB field.
+    const searchTerm = item.mainText || item.label;
+    if (item.lat && item.lng) {
+      // Coords available synchronously — pass both at once so coords win immediately
+      onChange(searchTerm);
+      onCoordsChange?.({ lat: item.lat, lng: item.lng });
+    } else if (item.placeId && onCoordsChange) {
+      // Coords need a Place Details fetch — suppress text search until they arrive
+      // by NOT calling onChange yet; set the input display only.
+      const apiKey = (typeof window !== 'undefined' && window.__OLA_KEY__) || '';
+      if (apiKey) {
+        try {
+          const res = await fetch(`https://api.olamaps.io/places/v1/details?place_id=${encodeURIComponent(item.placeId)}&api_key=${apiKey}`);
+          const data = await res.json();
+          const loc = data?.result?.geometry?.location;
+          onChange(searchTerm);
+          if (loc?.lat && loc?.lng) onCoordsChange({ lat: loc.lat, lng: loc.lng });
+        } catch {
+          onChange(searchTerm); // fallback to text search on error
+        }
+      } else {
+        onChange(searchTerm);
+      }
+    } else {
+      onChange(searchTerm);
+    }
   };
 
   return (
@@ -121,7 +150,8 @@ function HomePage({nav, savedIds, onSave, onUnlock}) {
   const featured = listings.slice(0, 8);
 
   const handleSearch = () => {
-    nav('search', null, { q: locationQ, bhk, type });
+    const dest = tab === 'buy' ? 'buy' : 'search';
+    nav(dest, null, { q: locationQ, bhk, type });
   };
 
   return (

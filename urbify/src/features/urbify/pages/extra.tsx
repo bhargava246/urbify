@@ -11,7 +11,7 @@ import {
   PortalShell, StatCard, StatusBadge, DashHeader, Footer,
 } from '../_shared';
 import { authFetch } from '@/lib/authFetch';
-import { BROKER_NAV, CLIENT_NAV } from './client-broker';
+import { BROKER_NAV, CLIENT_NAV, CLIENT_USER } from './client-broker';
 import { Field } from './owner';
 
 function BrokerPortfolioPage({nav}) {
@@ -54,7 +54,7 @@ function BrokerPortfolioPage({nav}) {
   const toggleAll = () => setSelected(allSelected ? [] : filtered.map(p=>p.id));
 
   return (
-    <PortalShell user={portalUser} navItems={BROKER_NAV()} current="brokerList" onNav={(id)=>nav(id)}>
+    <PortalShell user={portalUser} navItems={BROKER_NAV(portfolio.length || undefined)} current="brokerList" onNav={(id)=>nav(id)}>
       <DashHeader title="Portfolio"
         subtitle={loadingPortfolio ? 'Loading…' : `${portfolio.length} listings · ${portfolio.filter(p=>p.status==='live').length} live · ${portfolio.filter(p=>p.status==='rented').length} closed`}
         actions={
@@ -146,7 +146,7 @@ function BrokerPortfolioPage({nav}) {
                   <td style={{padding:'14px 22px', color:'var(--text-muted)'}}>{l.owner}</td>
                   <td style={{padding:'14px 22px'}}><StatusBadge status={l.status}/></td>
                   <td style={{padding:'14px 22px', color:'var(--text-muted)', fontVariantNumeric:'tabular-nums'}}>{l.daysListed} days</td>
-                  <td style={{padding:'14px 22px', fontWeight:600, fontVariantNumeric:'tabular-nums'}}>{Math.floor(l.pop/4)}</td>
+                  <td style={{padding:'14px 22px', fontWeight:600, fontVariantNumeric:'tabular-nums'}}>{l.unlocks}</td>
                   <td style={{padding:'14px 22px', fontWeight:600}}>₹{l.rentK}k</td>
                   <td style={{padding:'14px 22px', fontWeight:700, color: l.status === 'rented' ? 'var(--success)' : 'var(--text-muted)', fontVariantNumeric:'tabular-nums'}}>
                     {l.status === 'rented' ? `+₹${l.commission.toLocaleString("en-IN")}` : `~₹${l.commission.toLocaleString("en-IN")}`}
@@ -186,7 +186,7 @@ function BrokerPortfolioPage({nav}) {
                 <div style={{fontSize:12, color:'var(--text-muted)', marginTop:2}}>Owner: {l.owner}</div>
                 <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:12}}>
                   <div className="font-display" style={{fontSize:22, fontWeight:800, letterSpacing:'-0.02em'}}>₹{l.rentK}k</div>
-                  <div style={{fontSize:11, color:'var(--text-muted)'}}>{Math.floor(l.pop/4)} unlocks</div>
+                  <div style={{fontSize:11, color:'var(--text-muted)'}}>{l.unlocks} unlocks</div>
                 </div>
                 <div style={{display:'flex', gap:6, marginTop:12}}>
                   <button className="btn btn-outline btn-sm" style={{flex:1}}>Edit</button>
@@ -204,9 +204,11 @@ function BrokerPortfolioPage({nav}) {
 // ─── TENANT TRANSACTIONS ─────────────────────────────────────────────────
 function ClientTxPage({nav}) {
   const { authUser } = useAppData();
-  const _clientName = authUser?.clientProfile?.fullName || 'Tenant';
-  const _clientInitials = _clientName.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-  const portalUser = { initials: _clientInitials, name: _clientName, role: 'Tenant', color: 'var(--accent-500)' };
+  const _clientName = authUser?.clientProfile?.fullName || authUser?.ownerProfile?.fullName || 'Tenant';
+  const _clientInitials = _clientName.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2) || 'U';
+  const portalUser = authUser
+    ? { initials: _clientInitials, name: _clientName, role: 'Tenant', color: 'var(--accent-500)', avatarUrl: authUser?.avatarUrl || null }
+    : CLIENT_USER;
 
   const [filter, setFilter] = useState("all");
   const [transactions, setTransactions] = useState([]);
@@ -227,6 +229,7 @@ function ClientTxPage({nav}) {
           date: new Date(u.createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }),
           amount: u.totalAmountInr || 0,
           status: u.status === 'SUCCESS' ? 'completed' : u.status === 'REFUNDED' ? 'refunded' : 'pending',
+          method: u.paymentMethod || u.method || null,
         })));
       })
       .catch(() => setTransactions([]))
@@ -254,7 +257,7 @@ function ClientTxPage({nav}) {
         <StatCard label="Total unlocks" value={transactions.filter(t=>t.status==='completed').length.toString()} sub="completed"/>
         <StatCard label="Total spent" value={`₹${(totalSpent/1000).toFixed(1)}k`} sub="across all unlocks"/>
         <StatCard label="GST paid (claimable)" value={`₹${Math.round(totalSpent * 0.18 / 1.18 / 100) * 100 / 1000}k`} sub="for FY 2026-27"/>
-        <StatCard label="Refunded" value={`₹${refunded.toLocaleString("en-IN")}`} sub="1 transaction" color="var(--text-faint)"/>
+        <StatCard label="Refunded" value={`₹${refunded.toLocaleString("en-IN")}`} sub={`${transactions.filter(t=>t.status==='refunded').length} transaction${transactions.filter(t=>t.status==='refunded').length !== 1 ? 's' : ''}`} color="var(--text-faint)"/>
       </div>
 
       {/* tax summary card */}
@@ -302,8 +305,8 @@ function ClientTxPage({nav}) {
                 <div style={{fontSize:11, color:'var(--text-muted)', fontFamily:'var(--f-mono)'}}>{t.id}</div>
               </div>
               <div style={{display:'flex', gap:12, marginTop:4, fontSize:12, color:'var(--text-muted)'}}>
-                <span>{t.date}</span><span>·</span>
-                <span>Paid via {t.method}</span>
+                <span>{t.date}</span>
+                {t.method && <><span>·</span><span>Paid via {t.method}</span></>}
                 {t.reason && <><span>·</span><span style={{color:'var(--warning)'}}>{t.reason}</span></>}
               </div>
             </div>
@@ -344,7 +347,7 @@ function SettingsPage({nav}) {
   const roleLabel = authUser?.role === 'OWNER' ? 'Owner' : authUser?.role === 'BROKER' ? 'Broker' : authUser?.role === 'ADMIN' ? 'Admin' : 'Tenant';
   const roleColor = authUser?.role === 'OWNER' ? 'var(--brand-500)' : authUser?.role === 'BROKER' ? 'var(--text)' : authUser?.role === 'ADMIN' ? '#7C3AED' : 'var(--accent-500)';
   const initials  = fullName ? fullName.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() : 'U';
-  const portalUser = { initials, name: fullName || authUser?.email || 'User', role: roleLabel, color: roleColor };
+  const portalUser = { initials, name: fullName || authUser?.email || 'User', role: roleLabel, color: roleColor, avatarUrl: authUser?.avatarUrl || null };
 
   const [section, setSection] = useState("profile");
   const [notif, setNotif]     = useState({sms:true, email:true, push:false, weekly:true});
@@ -687,6 +690,9 @@ function HelpPage({nav}) {
 
   return (
     <div>
+      <div style={{padding:'16px 28px'}}>
+        <button className="btn btn-ghost btn-sm" onClick={()=>nav('home')}><Icon.back/> Back</button>
+      </div>
       {/* Hero search */}
       <section style={{background:'var(--brand-500)', color:'#fff', padding:'72px 28px 96px', position:'relative', overflow:'hidden'}}>
         <div style={{maxWidth:780, margin:'0 auto', textAlign:'center'}}>

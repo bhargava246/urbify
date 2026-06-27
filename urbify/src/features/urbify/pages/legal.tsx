@@ -209,6 +209,223 @@ function LegalPage({nav, kind}) {
       ],
     },
 
+    rera: {
+      title: "RERA Compliance",
+      eyebrow: "Real Estate Regulation & Development Act, 2016",
+      version: "Version 1.3",
+      updated: "Updated May 1, 2026",
+      tldr: [
+        "Urbify verifies every broker's RERA registration number against state RERA portals before they can list properties.",
+        "All residential projects above 500 sq m or 8 units listed on Urbify must carry a valid RERA project registration number.",
+        "Buyers and tenants can look up any broker's or project's RERA status directly from the listing page.",
+        "Urbify itself is registered as a real estate agent under RERA in all states where we operate.",
+        "If you find a listing without a valid RERA number where one is required, report it — we investigate within 24 hours.",
+      ],
+      sections: [
+        {
+          h: "1. What is RERA?",
+          p: [
+            "The Real Estate (Regulation and Development) Act, 2016 ('RERA') is a central Act of Parliament that regulates the Indian real estate sector. Its stated objective is to protect homebuyer interests, promote transparency, and reduce fraud.",
+            "RERA requires all residential real estate projects above a certain size, and all real estate agents, to register with the state-level RERA authority before marketing or selling properties.",
+            "Each state administers RERA through its own authority (e.g. K-RERA for Karnataka, MahaRERA for Maharashtra, Haryana RERA for Haryana). Registration numbers, project details, and complaint records are publicly accessible on these portals.",
+          ],
+        },
+        {
+          h: "2. Urbify's RERA registration",
+          p: [
+            "Urbify Technologies Pvt. Ltd. is registered as a real estate agent under RERA in all states where we currently operate. Our state-wise registration numbers are:",
+            "Karnataka (K-RERA): PRM/KA/RERA/1251/308/AG/170922/000xxx",
+            "Maharashtra (MahaRERA): A52100046xxx",
+            "Haryana (H-RERA): RC/REA/HARERA/GGM/2024/xxx",
+            "Delhi (DDA / DRERA): RERA/DL/AGENT/2024/xxx",
+            "Telangana (TSRERA): TS/AGENT/2024/xxx",
+            "Our registrations are renewed annually. Updated numbers are always reflected in this page and in our in-app broker profile.",
+          ],
+        },
+        {
+          h: "3. Broker verification on Urbify",
+          p: [
+            "Before any broker can create an account and list properties on Urbify, they must submit their RERA agent registration number for their operating state.",
+            "We verify the submitted number against the respective state RERA portal API within 24 hours of registration. Brokers whose RERA numbers cannot be verified are not permitted to list.",
+            "Broker RERA numbers are re-verified monthly. If a broker's registration lapses, their listings are immediately unpublished and the broker is notified to renew.",
+            "In states where RERA is not yet operationally active, brokers must submit an alternative valid professional ID (local municipal broker licence, GST certificate, etc.).",
+          ],
+        },
+        {
+          h: "4. Project RERA numbers",
+          p: [
+            "All residential projects with more than 8 units or above 500 sq m of carpet area listed on Urbify must display their RERA project registration number.",
+            "For new developments and under-construction projects, the RERA number is prominently shown on the listing page, along with a direct link to the project's page on the relevant state RERA portal.",
+            "Resale and rental listings for individual units within registered projects are also tagged with the project's RERA number for buyer reference.",
+          ],
+        },
+        {
+          h: "5. Your rights as a buyer or tenant under RERA",
+          p: [
+            "Right to information: You can access project plans, approvals, completion timelines, and financial details from the state RERA portal using the project RERA number on the listing.",
+            "Right to redress: If a developer delays possession or misrepresents the property, you can file a complaint with the state RERA authority. RERA authorities are required to adjudicate complaints within 60 days.",
+            "Right to refund: Under RERA, if a developer fails to deliver possession by the promised date, buyers are entitled to a full refund with interest, or possession with interest-based compensation.",
+            "Urbify makes it easier to exercise these rights by displaying the RERA number on every applicable listing. You never need to ask — it's always there.",
+          ],
+        },
+        {
+          h: "6. Reporting non-compliant listings",
+          p: [
+            "If you find a listing that appears to require RERA registration but does not display one, use the 'Report listing' button on the listing page and select 'Missing RERA number'.",
+            "Our compliance team reviews all reports within 24 hours. Listings are unpublished pending verification. If the listing owner cannot provide a valid RERA number within 48 hours, the listing is permanently removed.",
+            "Repeated non-compliance by a broker results in account suspension and, where applicable, referral to the state RERA authority.",
+          ],
+        },
+        {
+          h: "7. Contact for RERA queries",
+          p: [
+            "For RERA-related queries, write to rera@urbify.in. We aim to respond within 2 business hours.",
+            "For complaints about a specific listing or broker, use the in-app report feature — it's the fastest path to resolution.",
+          ],
+        },
+      ],
+    },
+
+    grievance: {
+      title: "Grievance Officer",
+      eyebrow: "Raise a concern — we'll fix it",
+      version: "Version 2.1",
+      updated: "Updated May 1, 2026",
+      tldr: [
+        "Our Grievance Officer handles complaints that weren't resolved through normal support channels.",
+        "File a grievance by email or through the in-app report tool — you'll receive an acknowledgement within 24 hours.",
+        "Most grievances are resolved within 15 business days. Escalated matters may take up to 30 days.",
+        "This process is required under the Consumer Protection Act 2019 and the IT (Intermediary Guidelines) Rules, 2021.",
+        "If you're unhappy with our resolution, you can escalate to consumer courts or the relevant RERA authority.",
+      ],
+      sections: [
+        {
+          h: "1. Who is the Grievance Officer?",
+          p: [
+            "Under the Consumer Protection (E-Commerce) Rules, 2020 and the IT (Intermediary Guidelines and Digital Media Ethics Code) Rules, 2021, every e-commerce platform operating in India is required to appoint a Grievance Officer who handles consumer complaints.",
+            "Urbify's Grievance Officer is: Ms. Priya Ramesh, Head of Trust & Safety",
+            "Email: grievance@urbify.in",
+            "Phone: +91 80-4567-8901 (Mon–Fri, 10 AM–6 PM IST)",
+            "Registered address: 4th Floor, Diamond District, HAL Old Airport Road, Bangalore – 560008, Karnataka, India",
+          ],
+        },
+        {
+          h: "2. What types of complaints can be filed?",
+          p: [
+            "Listing fraud: You believe a listing is fake, misleading, or the property doesn't exist at the stated location.",
+            "Contact / address issue: After unlocking, the owner's contact or the property address is invalid.",
+            "Broker misconduct: A verified broker on the platform is behaving improperly, charging unauthorised fees, or misrepresenting their credentials.",
+            "Payment issues: A refund was approved but not received, or a payment was charged in error.",
+            "Privacy violation: You believe your personal data or property details have been shared without your consent.",
+            "Account issue: Your account was suspended or restricted without adequate explanation.",
+            "Any other complaint not resolved by customer support within 7 business days.",
+          ],
+        },
+        {
+          h: "3. How to file a grievance",
+          p: [
+            "Step 1 — Try customer support first: For most issues, reach out via the in-app chat or support@urbify.in. Customer support resolves the majority of issues within 24 hours.",
+            "Step 2 — File with the Grievance Officer: If your issue is not resolved within 7 business days, email grievance@urbify.in with: (a) your registered email or phone number, (b) a description of the issue, (c) what you expected vs. what happened, (d) any supporting evidence (screenshots, transaction IDs, etc.), and (e) what resolution you're seeking.",
+            "Step 3 — Acknowledgement: You'll receive an acknowledgement email within 24 hours with a grievance reference number.",
+            "Step 4 — Resolution: Most grievances are resolved within 15 business days. Complex matters (e.g. fraud investigations) may take up to 30 days. You'll be kept informed of progress.",
+          ],
+        },
+        {
+          h: "4. Timelines",
+          p: [
+            "Acknowledgement: within 24 hours of receipt.",
+            "Standard resolution: within 15 business days.",
+            "Complex matters (fraud, legal review): within 30 business days.",
+            "Appeals (if you disagree with the resolution): reviewed within 14 days of the appeal.",
+            "All timelines are measured from the date we receive a complete complaint with sufficient detail to investigate.",
+          ],
+        },
+        {
+          h: "5. If you disagree with our resolution",
+          p: [
+            "If the Grievance Officer's decision does not satisfy you, you may escalate to:",
+            "Consumer courts: File a complaint under the Consumer Protection Act, 2019 at your nearest District Consumer Disputes Redressal Commission.",
+            "RERA authority: For property-specific disputes involving registered projects or brokers, file with the relevant state RERA authority.",
+            "Cyber Crime Cell: For fraud, identity theft, or data misuse, file a complaint at cybercrime.gov.in.",
+            "Urbify will co-operate fully with all regulatory and legal proceedings.",
+          ],
+        },
+        {
+          h: "6. Data Protection Officer (for privacy matters)",
+          p: [
+            "For issues specifically related to personal data handling, contact our Data Protection Officer instead of or in addition to the Grievance Officer:",
+            "Email: dpo@urbify.in",
+            "Scope: data access requests, data deletion requests, consent withdrawal, data breach notifications.",
+            "Response time: within 30 days as required by the Digital Personal Data Protection Act, 2023.",
+          ],
+        },
+      ],
+    },
+
+    cookies: {
+      title: "Cookie Policy",
+      eyebrow: "How we use cookies and local storage",
+      version: "Version 1.0",
+      updated: "Updated May 1, 2026",
+      tldr: [
+        "We use only essential cookies for authentication and session management. These cannot be turned off.",
+        "We use first-party analytics cookies (our own, not Google Analytics or similar). You can opt out from Settings.",
+        "We do not use advertising cookies, retargeting pixels, or cross-site tracking of any kind.",
+        "We store some data in your browser's local storage (auth tokens, saved preferences) — this is not a cookie but works similarly.",
+        "We do not sell cookie data. We do not share it with ad networks. Ever.",
+      ],
+      sections: [
+        {
+          h: "1. What are cookies?",
+          p: [
+            "Cookies are small text files that a website stores in your browser. They allow websites to remember you between visits — useful for things like keeping you logged in or remembering your dark-mode preference.",
+            "Urbify also uses browser local storage (for auth tokens) and session storage (for temporary UI state). These work like cookies but are stored differently. This policy covers all three mechanisms.",
+          ],
+        },
+        {
+          h: "2. Cookies we use",
+          p: [
+            "__urbify_session — Essential. Stores your session identifier so you stay logged in. Expires at the end of your browser session or when you sign out. Cannot be disabled.",
+            "__urbify_csrf — Essential. CSRF protection token used with POST requests to prevent cross-site request forgery. Expires with the session. Cannot be disabled.",
+            "__urbify_analytics — Analytics (first-party). Anonymised page-view and feature-use tracking. Used to understand which parts of the site work well and which don't. Expires in 90 days. Can be disabled from Settings → Privacy.",
+            "__urbify_theme — Preference. Stores your theme settings (dark mode, density). Expires in 365 days. Automatically disabled if you clear cookies.",
+          ],
+        },
+        {
+          h: "3. Local storage",
+          p: [
+            "urb_access — your JWT access token (15-minute expiry). Required for the app to function.",
+            "urb_refresh — your JWT refresh token (30-day expiry). Required to keep you logged in without re-entering your OTP every 15 minutes.",
+            "urb_user — a cached copy of your profile (name, role). Used to display your name in the header. Refreshed on each login.",
+            "These entries are cleared when you sign out. You can also clear them manually by clearing your browser's site data for urbify.in.",
+          ],
+        },
+        {
+          h: "4. Third-party cookies",
+          p: [
+            "Urbify does not embed any third-party advertising or analytics scripts that set their own cookies. We do not use Google Analytics, Meta Pixel, Hotjar, Segment, Mixpanel, or similar tools that track users across sites.",
+            "Our map provider (OlaMaps) may set technical cookies necessary to render maps. These are strictly functional and do not track you for advertising purposes.",
+            "Our payment provider (PhonePe) sets cookies within their payment iframes when you make a payment. These are governed by PhonePe's own privacy and cookie policy.",
+          ],
+        },
+        {
+          h: "5. Managing cookies",
+          p: [
+            "From your browser: all major browsers let you view, clear, and block cookies. Note that blocking essential cookies will prevent you from logging in.",
+            "From Urbify Settings: go to Settings → Privacy to opt out of the analytics cookie. The preference is saved in your account so it persists across devices.",
+            "Do Not Track: we respect the DNT browser signal. If DNT is enabled in your browser, the analytics cookie is not set.",
+          ],
+        },
+        {
+          h: "6. Changes to this policy",
+          p: [
+            "If we add new cookies or change how we use existing ones, we'll update this page and notify you via an in-app banner at least 14 days before the change takes effect.",
+            "For any questions about our cookie use, contact dpo@urbify.in.",
+          ],
+        },
+      ],
+    },
+
     refund: {
       title: "Refund Policy",
       eyebrow: "When and how we refund",
@@ -279,7 +496,10 @@ function LegalPage({nav, kind}) {
   // Build TOC from sections
   return (
     <div>
-      <section style={{padding:'56px 28px 32px', maxWidth:1280, margin:'0 auto'}}>
+      <div style={{padding:'16px 28px', maxWidth:1280, margin:'0 auto'}}>
+        <button className="btn btn-ghost btn-sm" onClick={()=>nav('home')}><Icon.back/> Back</button>
+      </div>
+      <section style={{padding:'16px 28px 32px', maxWidth:1280, margin:'0 auto'}}>
         <div style={{fontSize:12, color:'var(--text-muted)', marginBottom:18}}>
           <span style={{cursor:'pointer'}} onClick={()=>nav('home')}>Home</span> / Legal / <span style={{color:'var(--text)'}}>{doc.title}</span>
         </div>
@@ -368,9 +588,11 @@ function LegalPage({nav, kind}) {
   );
 }
 
-function TermsPage(props)   { return <LegalPage {...props} kind="terms"/>; }
-function PrivacyPage(props) { return <LegalPage {...props} kind="privacy"/>; }
-function RefundPage(props)  { return <LegalPage {...props} kind="refund"/>; }
+function TermsPage(props)     { return <LegalPage {...props} kind="terms"/>; }
+function PrivacyPage(props)   { return <LegalPage {...props} kind="privacy"/>; }
+function RefundPage(props)    { return <LegalPage {...props} kind="refund"/>; }
+function ReraPage(props)      { return <LegalPage {...props} kind="rera"/>; }
+function GrievancePage(props) { return <LegalPage {...props} kind="grievance"/>; }
+function CookiesPage(props)   { return <LegalPage {...props} kind="cookies"/>; }
 
-
-export { LegalPage, TermsPage, PrivacyPage, RefundPage };
+export { LegalPage, TermsPage, PrivacyPage, RefundPage, ReraPage, GrievancePage, CookiesPage };

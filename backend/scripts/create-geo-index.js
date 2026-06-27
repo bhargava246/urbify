@@ -10,7 +10,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   await prisma.$runCommandRaw({
-    createIndexes: 'Listing',
+    createIndexes: 'listings',
     indexes: [
       {
         key: { geoLocation: '2dsphere' },

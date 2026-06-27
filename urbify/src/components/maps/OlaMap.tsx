@@ -17,6 +17,30 @@ export interface MapMarker {
   color?: string;
 }
 
+/** Build a GeoJSON polygon approximating a circle of `radiusMeters` around [lng, lat]. */
+function buildCircleGeoJSON(lng: number, lat: number, radiusMeters: number, points = 64) {
+  const latRad = (lat * Math.PI) / 180;
+  const mPerLat = 111320;
+  const mPerLng = 111320 * Math.cos(latRad);
+  const coords: [number, number][] = [];
+  for (let i = 0; i < points; i++) {
+    const angle = (i / points) * 2 * Math.PI;
+    coords.push([
+      lng + (radiusMeters / mPerLng) * Math.cos(angle),
+      lat + (radiusMeters / mPerLat) * Math.sin(angle),
+    ]);
+  }
+  coords.push(coords[0]);
+  return {
+    type: "FeatureCollection" as const,
+    features: [{
+      type: "Feature" as const,
+      geometry: { type: "Polygon" as const, coordinates: [coords] },
+      properties: {},
+    }],
+  };
+}
+
 interface OlaMapProps {
   /** [lng, lat] */
   center?: [number, number];
@@ -27,6 +51,17 @@ interface OlaMapProps {
   draggablePin?: boolean;
   /** Called when draggable pin is moved or map is clicked in pin-drop mode */
   onPinDrop?: (lat: number, lng: number) => void;
+  /**
+   * If true, shows a 100 m radius semi-transparent circle around `center`
+   * instead of an exact marker pin. Use on property detail pages to protect
+   * the precise address while still indicating the neighbourhood.
+   */
+  locationCircle?: boolean;
+  /**
+   * If true, renders each entry in `markers` as a 100 m radius circle instead
+   * of a pin. Use on search/listing maps to show approximate areas.
+   */
+  circleMarkers?: boolean;
   height?: string | number;
   className?: string;
 }
@@ -37,6 +72,8 @@ export function OlaMap({
   markers = [],
   draggablePin = false,
   onPinDrop,
+  locationCircle = false,
+  circleMarkers = false,
   height = 320,
   className,
 }: OlaMapProps) {
@@ -93,7 +130,7 @@ export function OlaMap({
       });
 
       // ── Draggable pin ────────────────────────────────────────────────────
-      if (draggablePin) {
+      if (draggablePin && !locationCircle) {
         const pin = olaMaps
           .addMarker({ color: "#0D7C66", draggable: true, anchor: "bottom" })
           .setLngLat(center)
@@ -114,25 +151,79 @@ export function OlaMap({
         });
       }
 
-      // ── Static markers ───────────────────────────────────────────────────
-      markers.forEach((m) => {
-        const marker = olaMaps
-          .addMarker({ color: m.color ?? "#0D7C66", anchor: "bottom" })
-          .setLngLat([m.lng, m.lat])
-          .addTo(map);
-
-        if (m.label || m.price) {
-          const popup = olaMaps
-            .addPopup({ offset: [0, -36], closeButton: false })
-            .setHTML(
-              m.price
-                ? `<div style="font-weight:700;font-size:13px;color:#0D7C66">${m.price}</div>${m.label ? `<div style="font-size:11px;color:#6b7280;margin-top:2px">${m.label}</div>` : ""}`
-                : `<div style="font-size:12px">${m.label}</div>`
-            );
-          marker.setPopup(popup);
-          marker.togglePopup();
+      // ── 100 m location circle (privacy mode) ────────────────────────────
+      if (locationCircle) {
+        const addCircle = () => {
+          const geoJSON = buildCircleGeoJSON(center[0], center[1], 100);
+          map.addSource("location-circle", { type: "geojson", data: geoJSON });
+          map.addLayer({
+            id: "location-circle-fill",
+            type: "fill",
+            source: "location-circle",
+            paint: { "fill-color": "#0D7C66", "fill-opacity": 0.15 },
+          });
+          map.addLayer({
+            id: "location-circle-outline",
+            type: "line",
+            source: "location-circle",
+            paint: { "line-color": "#0D7C66", "line-width": 2, "line-opacity": 0.55 },
+          });
+        };
+        if (map.loaded()) {
+          addCircle();
+        } else {
+          map.on("load", addCircle);
         }
-      });
+      }
+
+      // ── Per-marker 100 m circles (search map privacy mode) ──────────────
+      if (circleMarkers && markers.length > 0) {
+        const addCircles = () => {
+          markers.forEach((m, i) => {
+            const geoJSON = buildCircleGeoJSON(m.lng, m.lat, 100);
+            map.addSource(`circle-src-${i}`, { type: "geojson", data: geoJSON });
+            map.addLayer({
+              id: `circle-fill-${i}`,
+              type: "fill",
+              source: `circle-src-${i}`,
+              paint: { "fill-color": m.color ?? "#0D7C66", "fill-opacity": 0.18 },
+            });
+            map.addLayer({
+              id: `circle-outline-${i}`,
+              type: "line",
+              source: `circle-src-${i}`,
+              paint: { "line-color": m.color ?? "#0D7C66", "line-width": 2, "line-opacity": 0.6 },
+            });
+          });
+        };
+        if (map.loaded()) {
+          addCircles();
+        } else {
+          map.on("load", addCircles);
+        }
+      }
+
+      // ── Static markers ───────────────────────────────────────────────────
+      if (!locationCircle && !circleMarkers) {
+        markers.forEach((m) => {
+          const marker = olaMaps
+            .addMarker({ color: m.color ?? "#0D7C66", anchor: "bottom" })
+            .setLngLat([m.lng, m.lat])
+            .addTo(map);
+
+          if (m.label || m.price) {
+            const popup = olaMaps
+              .addPopup({ offset: [0, -36], closeButton: false })
+              .setHTML(
+                m.price
+                  ? `<div style="font-weight:700;font-size:13px;color:#0D7C66">${m.price}</div>${m.label ? `<div style="font-size:11px;color:#6b7280;margin-top:2px">${m.label}</div>` : ""}`
+                  : `<div style="font-size:12px">${m.label}</div>`
+              );
+            marker.setPopup(popup);
+            marker.togglePopup();
+          }
+        });
+      }
     })();
 
     return () => {

@@ -15,7 +15,10 @@ import { Field } from './owner';
 function AboutPage({nav}) {
   return (
     <div>
-      <section style={{padding:'72px 28px 24px', maxWidth:1280, margin:'0 auto'}}>
+      <div style={{padding:'16px 28px', maxWidth:1280, margin:'0 auto'}}>
+        <button className="btn btn-ghost btn-sm" onClick={()=>nav('home')}><Icon.back/> Back</button>
+      </div>
+      <section style={{padding:'16px 28px 24px', maxWidth:1280, margin:'0 auto'}}>
         <div className="chip" style={{background:'transparent', border:'1px solid var(--border-strong)', marginBottom:24}}>About Urbify</div>
         <h1 className="font-display" style={{fontSize:'clamp(48px, 7vw, 96px)', fontWeight:800, letterSpacing:'-0.045em', lineHeight:.96, margin:0, maxWidth:1200}}>
           Real estate has been<br/>broken for too long.
@@ -157,7 +160,10 @@ function FaqPage({nav}) {
 
   return (
     <div>
-      <section style={{padding:'72px 28px 32px', maxWidth:1280, margin:'0 auto'}}>
+      <div style={{padding:'16px 28px', maxWidth:1280, margin:'0 auto'}}>
+        <button className="btn btn-ghost btn-sm" onClick={()=>nav('home')}><Icon.back/> Back</button>
+      </div>
+      <section style={{padding:'16px 28px 32px', maxWidth:1280, margin:'0 auto'}}>
         <div className="chip" style={{background:'transparent', border:'1px solid var(--border-strong)', marginBottom:24}}>FAQ</div>
         <h1 className="font-display" style={{fontSize:'clamp(48px, 7vw, 88px)', fontWeight:800, letterSpacing:'-0.045em', lineHeight:.96, margin:0}}>
           Questions, answered.
@@ -201,7 +207,10 @@ function ContactPage({nav}) {
   const _email = authUser?.email || '';
   return (
     <div>
-      <section style={{padding:'72px 28px 32px', maxWidth:1280, margin:'0 auto'}}>
+      <div style={{padding:'16px 28px', maxWidth:1280, margin:'0 auto'}}>
+        <button className="btn btn-ghost btn-sm" onClick={()=>nav('home')}><Icon.back/> Back</button>
+      </div>
+      <section style={{padding:'16px 28px 32px', maxWidth:1280, margin:'0 auto'}}>
         <div className="chip" style={{background:'transparent', border:'1px solid var(--border-strong)', marginBottom:24}}>Contact</div>
         <h1 className="font-display" style={{fontSize:'clamp(48px, 7vw, 88px)', fontWeight:800, letterSpacing:'-0.045em', lineHeight:.96, margin:0}}>
           We read every message.
@@ -328,4 +337,81 @@ function ContactRow({city, email, phone}) {
 
 // ─── CITY LANDING ─────────────────────────────────────────────────────────
 
-export { AboutPage, FaqPage, ContactPage };
+function PressPage({nav}) {
+  const releases = [
+    { date: "May 2026", headline: "Urbify raises ₹42 Cr Series A to expand to 15 new cities",       outlet: "The Economic Times" },
+    { date: "Mar 2026", headline: "How one startup is killing brokerage fees in Indian real estate",  outlet: "YourStory" },
+    { date: "Jan 2026", headline: "Urbify crosses 10,000 verified listings in Bangalore & Mumbai",   outlet: "Inc42" },
+    { date: "Nov 2025", headline: "The no-broker model: inside Urbify's privacy-first approach",     outlet: "The Ken" },
+    { date: "Sep 2025", headline: "Urbify launches RERA-verified broker programme across 6 states",  outlet: "Mint" },
+  ];
+
+  return (
+    <div>
+      <section style={{padding:'72px 28px 48px', maxWidth:1280, margin:'0 auto'}}>
+        <div className="chip" style={{background:'transparent', border:'1px solid var(--border-strong)', marginBottom:24}}>Press & Media</div>
+        <h1 className="font-display" style={{fontSize:'clamp(48px, 7vw, 96px)', fontWeight:800, letterSpacing:'-0.045em', lineHeight:.96, margin:0}}>
+          Urbify in the news.
+        </h1>
+        <p className="muted" style={{fontSize:18, maxWidth:620, marginTop:28, lineHeight:1.5}}>
+          For press enquiries, interviews, and media assets, reach out to{' '}
+          <a href="mailto:press@urbify.in" style={{color:'var(--brand-500)'}}>press@urbify.in</a>.
+          We typically respond within 4 business hours.
+        </p>
+      </section>
+
+      <section style={{padding:'0 28px 72px', maxWidth:1280, margin:'0 auto'}}>
+        <h2 className="font-display" style={{fontSize:28, fontWeight:700, letterSpacing:'-0.025em', marginBottom:28}}>Recent coverage</h2>
+        <div style={{display:'flex', flexDirection:'column', gap:0}}>
+          {releases.map((r, i) => (
+            <div key={i} style={{
+              display:'grid', gridTemplateColumns:'120px 1fr 160px', gap:24, alignItems:'center',
+              padding:'22px 0', borderTop:'1px solid var(--border)',
+            }}>
+              <div style={{fontSize:13, color:'var(--text-muted)', fontFamily:'var(--f-mono)'}}>{r.date}</div>
+              <div style={{fontSize:17, fontWeight:500, lineHeight:1.4}}>{r.headline}</div>
+              <div style={{fontSize:13, color:'var(--text-muted)', textAlign:'right'}}>{r.outlet}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section style={{padding:'64px 28px 96px', background:'var(--surface-sunken)'}}>
+        <div style={{maxWidth:1280, margin:'0 auto'}}>
+          <h2 className="font-display" style={{fontSize:28, fontWeight:700, letterSpacing:'-0.025em', marginBottom:32}}>Media kit</h2>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(260px, 1fr))', gap:18}}>
+            {[
+              { title:"Brand logos",        desc:"SVG and PNG in light, dark, and colour variants.",       action:"Download .zip" },
+              { title:"Founder photos",     desc:"High-res headshots of the founding team for editorial.", action:"Download .zip" },
+              { title:"Product screenshots",desc:"Latest app and web screenshots at 2× resolution.",       action:"Download .zip" },
+              { title:"Company fact sheet", desc:"Key metrics, funding, team size, cities, listings count.",action:"Download PDF" },
+            ].map((a, i) => (
+              <div key={i} className="card" style={{padding:24}}>
+                <div style={{fontWeight:700, fontSize:16, marginBottom:8}}>{a.title}</div>
+                <div style={{fontSize:14, color:'var(--text-muted)', lineHeight:1.5, marginBottom:18}}>{a.desc}</div>
+                <button className="btn btn-outline btn-sm">{a.action}</button>
+              </div>
+            ))}
+          </div>
+
+          <div style={{marginTop:48, padding:28, borderRadius:'var(--r-lg)', background:'var(--text)', color:'var(--bg)', maxWidth:640}}>
+            <div className="font-display" style={{fontSize:22, fontWeight:700, marginBottom:10}}>Get in touch</div>
+            <p style={{fontSize:15, lineHeight:1.6, opacity:.75, margin:'0 0 20px'}}>
+              For embargoed information, exclusive interviews, or bespoke data requests, email our communications team.
+            </p>
+            <div style={{display:'flex', gap:12, flexWrap:'wrap'}}>
+              <a href="mailto:press@urbify.in" className="btn btn-sm" style={{background:'var(--bg)', color:'var(--text)', textDecoration:'none', border:0}}>
+                ✉ press@urbify.in
+              </a>
+              <a href="tel:+918045678902" className="btn btn-outline btn-sm" style={{borderColor:'rgba(255,255,255,.3)', color:'var(--bg)', textDecoration:'none'}}>
+                +91 80-4567-8902
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+export { AboutPage, FaqPage, ContactPage, PressPage };

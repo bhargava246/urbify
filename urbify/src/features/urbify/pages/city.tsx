@@ -31,7 +31,10 @@ function CityPage({nav, savedIds, onSave, onUnlock}) {
 
   return (
     <div>
-      <section style={{padding:'56px 28px 32px', maxWidth:1440, margin:'0 auto'}}>
+      <div style={{padding:'16px 28px', maxWidth:1440, margin:'0 auto'}}>
+        <button className="btn btn-ghost btn-sm" onClick={()=>nav('home')}><Icon.back/> Back</button>
+      </div>
+      <section style={{padding:'16px 28px 32px', maxWidth:1440, margin:'0 auto'}}>
         <div style={{fontSize:12, color:'var(--text-muted)', marginBottom:18}}>
           <span style={{cursor:'pointer'}} onClick={()=>nav('home')}>Home</span> / Rent / <span style={{color:'var(--text)'}}>Jaipur</span>
         </div>
@@ -212,7 +215,10 @@ function LocalityPage({nav, savedIds, onSave, onUnlock}) {
 
   return (
     <div>
-      <section style={{padding:'56px 28px 32px', maxWidth:1440, margin:'0 auto'}}>
+      <div style={{padding:'16px 28px', maxWidth:1440, margin:'0 auto'}}>
+        <button className="btn btn-ghost btn-sm" onClick={()=>nav('city')}><Icon.back/> Back to cities</button>
+      </div>
+      <section style={{padding:'16px 28px 32px', maxWidth:1440, margin:'0 auto'}}>
         <div style={{fontSize:12, color:'var(--text-muted)', marginBottom:18}}>
           <span style={{cursor:'pointer'}} onClick={()=>nav('home')}>Home</span> / Rent / <span style={{cursor:'pointer'}} onClick={()=>nav('city')}>Bangalore</span> / <span style={{color:'var(--text)'}}>{loc}</span>
         </div>

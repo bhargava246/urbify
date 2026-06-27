@@ -76,7 +76,7 @@ function NotificationsPage({nav}) {
   } : CLIENT_USER;
 
   return (
-    <PortalShell user={portalUser} navItems={CLIENT_NAV()} current="notifications" onNav={(id)=>nav(id)}>
+    <PortalShell user={portalUser} navItems={CLIENT_NAV(unreadCount)} current="notifications" onNav={(id)=>nav(id)}>
       <DashHeader
         title={<>Inbox {unreadCount > 0 && <span style={{fontSize:18, color:'var(--text-muted)', fontWeight:500, marginLeft:8}}>· {unreadCount} unread</span>}</>}
         subtitle="Updates, matches, security, and platform news — all in one place."

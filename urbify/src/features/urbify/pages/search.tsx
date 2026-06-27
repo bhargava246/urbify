@@ -27,6 +27,7 @@ function SearchPage({nav, savedIds, onSave, onUnlock, initialSearchParams}) {
   const [sort, setSort] = useState("Newest");
   const [showMap, setShowMap] = useState(true);
   const [searchQ, setSearchQ] = useState(initialSearchParams?.q || "");
+  const [searchCoords, setSearchCoords] = useState(null); // {lat, lng} from OlaMaps selection
   const [apiResults, setApiResults] = useState(null); // null = not yet fetched
   const [isSearching, setIsSearching] = useState(false);
 
@@ -46,8 +47,17 @@ function SearchPage({nav, savedIds, onSave, onUnlock, initialSearchParams}) {
       params.set('minPrice', String(price[0] * 1000));
       params.set('maxPrice', String(price[1] * 1000));
     }
-    params.set('limit', '24');
-    if (searchQ) params.set('q', searchQ);
+    // Default to top 10 when no location is set; increase when actively searching
+    const hasLocation = searchCoords || searchQ;
+    params.set('limit', hasLocation ? '24' : '10');
+    // Coordinate-based search (from OlaMaps place selection) takes priority over text
+    if (searchCoords) {
+      params.set('lat', String(searchCoords.lat));
+      params.set('lng', String(searchCoords.lng));
+      params.set('radiusKm', '10');
+    } else if (searchQ) {
+      params.set('q', searchQ);
+    }
     if (bhkTouched && bhkSel.length === 1) params.set('bhk', String(bhkSel[0]));
     if (activeFurn.length === 1) params.set('furnishingStatus', activeFurn[0]);
 
@@ -67,7 +77,7 @@ function SearchPage({nav, savedIds, onSave, onUnlock, initialSearchParams}) {
         .finally(() => setIsSearching(false));
     }, 350);
     return () => clearTimeout(timer);
-  }, [bhkSel, price, priceTouched, bhkTouched, furn, sort, searchQ]);
+  }, [bhkSel, price, priceTouched, bhkTouched, furn, sort, searchQ, searchCoords]);
 
   // Fall back to context listings (from initial fetch) if API hasn't responded yet
   const baseListings = apiResults ?? ctxListings;
@@ -106,7 +116,12 @@ function SearchPage({nav, savedIds, onSave, onUnlock, initialSearchParams}) {
           <div style={{flex:1}}/>
           <div className="search-header-right" style={{display:'flex', gap:8, alignItems:'center', minWidth:380}}>
             <div style={{flex:1, position:'relative'}}>
-              <LocationAutocomplete value={searchQ} onChange={setSearchQ} placeholder="Search locality, city, landmark…"/>
+              <LocationAutocomplete
+                value={searchQ}
+                onChange={(v) => { setSearchQ(v); setSearchCoords(null); }}
+                onCoordsChange={setSearchCoords}
+                placeholder="Search locality, city, landmark…"
+              />
             </div>
             <button className="btn btn-primary" style={{flexShrink:0}}>{isSearching ? 'Searching…' : <><Icon.search/> Search</>}</button>
           </div>
@@ -179,7 +194,7 @@ function SearchPage({nav, savedIds, onSave, onUnlock, initialSearchParams}) {
           <div style={{display:'flex', alignItems:'baseline', justifyContent:'space-between', marginBottom:16, gap:16, flexWrap:'wrap'}}>
             <div>
               <h1 className="font-display" style={{fontSize:28, fontWeight:800, letterSpacing:'-0.03em', margin:0}}>
-                {filtered.length} homes for rent in {locationLabel}
+                {filtered.length} {searchCoords ? `homes within 10 km of ${locationLabel}` : `homes for rent${locationLabel !== 'India' ? ` in ${locationLabel}` : ''}`}
               </h1>
               <div style={{display:'flex', gap:8, marginTop:10, flexWrap:'wrap'}}>
                 {bhkSel.map(b=><span key={b} className="chip">{b} BHK <Icon.close/></span>)}
@@ -225,7 +240,7 @@ function SearchPage({nav, savedIds, onSave, onUnlock, initialSearchParams}) {
         {/* ─── Map ────────────────────────────────────── */}
         {showMap && (
           <aside className="search-map-aside" style={{position:'sticky', top:88, height:'calc(100vh - 100px)'}}>
-            <MapPanel listings={filtered}/>
+            <MapPanel listings={filtered} searchCoords={searchCoords}/>
           </aside>
         )}
       </div>
@@ -285,7 +300,7 @@ function RangeSlider({min, max, value, onChange, format}) {
 }
 
 // Map panel — real Ola Maps with listing pins
-function MapPanel({listings}) {
+function MapPanel({listings, searchCoords}) {
   // Build markers from listings that have lat/lng; fall back to city-centre coords
   // for listings without coordinates (privacy: only locality is known publicly)
   const CITY_CENTRES = {
@@ -298,34 +313,37 @@ function MapPanel({listings}) {
     Chennai:   [80.2707, 13.0827],
   };
 
-  const markers = listings.map((l, i) => {
-    // Small random scatter so overlapping pins don't stack exactly
-    const scatter = 0.003;
+  const markers = listings.map((l) => {
     const base = CITY_CENTRES[l.city] ?? CITY_CENTRES.Jaipur;
     return {
-      lng: (l.longitude ?? base[0]) + (Math.random() - 0.5) * scatter,
-      lat: (l.latitude  ?? base[1]) + (Math.random() - 0.5) * scatter,
-      price: l.price ? `₹${Math.round(l.price / 1000)}k` : undefined,
-      label: `${l.locality || l.city} · ${l.bhk ? l.bhk + " BHK" : l.type || ""}`,
+      lng: l.longitude ?? base[0],
+      lat: l.latitude  ?? base[1],
       color: "#0D7C66",
     };
   });
 
-  // Centre map on first listing or Jaipur (the only live city)
-  const first = markers[0];
-  const center = first ? [first.lng, first.lat] : CITY_CENTRES.Jaipur;
+  // If we have search coordinates, centre there; otherwise use first listing or Jaipur
+  const center = searchCoords
+    ? [searchCoords.lng, searchCoords.lat]
+    : markers[0]
+      ? [markers[0].lng, markers[0].lat]
+      : CITY_CENTRES.Jaipur;
+
+  // Zoom out to ~11 to show 10 km radius when a coordinate search is active
+  const zoom = searchCoords ? 11 : markers.length === 1 ? 14 : 12;
 
   return (
     <div style={{position:'relative', height:'100%', borderRadius:'var(--r-lg)', overflow:'hidden'}}>
       <OlaMap
         center={center}
-        zoom={markers.length === 1 ? 14 : 12}
+        zoom={zoom}
         markers={markers}
+        circleMarkers={true}
         height="100%"
       />
       <div style={{position:'absolute', top:12, left:12}}>
         <span className="chip" style={{background:'rgba(255,255,255,.95)', border:0, fontWeight:600}}>
-          📍 {markers.length} listing{markers.length !== 1 ? 's' : ''} · locality only shown
+          📍 {markers.length} listing{markers.length !== 1 ? 's' : ''}{searchCoords ? ' · within 10 km' : ''}
         </span>
       </div>
     </div>

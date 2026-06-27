@@ -9,14 +9,15 @@ export const OlaMap = dynamic(
   { ssr: false, loading: () => <div style={{height:280,background:'#e8ede9',borderRadius:'var(--r-md)',display:'grid',placeItems:'center',color:'#9ca3af',fontSize:13}}>Loading map…</div> }
 );
 
-export function MiniMap({label, lat, lng, onPinDrop}: any) {
+export function MiniMap({label, lat, lng, onPinDrop, locationCircle}: any) {
   const center = (lat && lng) ? [lng, lat] : [77.6177, 12.9352];
   return (
     <OlaMap
       center={center}
       zoom={15}
-      draggablePin={true}
+      draggablePin={!locationCircle}
       onPinDrop={onPinDrop}
+      locationCircle={locationCircle}
       height="100%"
     />
   );
@@ -161,7 +162,7 @@ function normalizeApiListing(l) {
   const fee = Math.round(dailyRent * 7.5);
   const feeGST = Math.round(fee * 1.18);
   const photos = (l.photos || []).map(p => p.s3Url || p).filter(Boolean);
-  const photo = photos[0] || PHOTOS[0];
+  const photo = photos[0] || '';
 
   const secDep = l.securityDeposit || rentOrPrice * 2;
   const deposit = Math.round(secDep / 1000);
@@ -260,10 +261,10 @@ function Logo({onClick}) {
 }
 
 // ─── Inline image with shimmer fallback ────────────────────────────────────
-function Img({src, alt, style, className}) {
+function Img({src, alt, style, className, onClick}) {
   const [loaded, setLoaded] = useState(false);
   return (
-    <div style={{position:'relative', overflow:'hidden', ...style}} className={className}>
+    <div style={{position:'relative', overflow:'hidden', ...style}} className={className} onClick={onClick}>
       {!loaded && <div className="shimmer" style={{position:'absolute', inset:0}}/>}
       <img src={src} alt={alt || ""}
         loading="lazy"
@@ -400,13 +401,17 @@ function Modal({open, onClose, children, width = 920, padding = 0}) {
 // portal-shell.jsx — shared sidebar + topbar for dashboards
 
 function PortalShell({user, navItems, current, onNav, children}) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const activeLabel = navItems.find((n: any) => !n.divider && n.id === current)?.label || '';
+
   return (
-    <div className="portal-layout" style={{display:'grid', gridTemplateColumns:'248px 1fr', minHeight:'calc(100vh - 64px)', background:'var(--surface-sunken)'}}>
-      <aside className="portal-sidebar" style={{
-        background:'var(--surface)', borderRight:'1px solid var(--border)',
-        padding:'24px 16px', display:'flex', flexDirection:'column',
-        position:'sticky', top:64, height:'calc(100vh - 64px)',
-      }}>
+    <div className="portal-layout">
+      {/* Mobile backdrop */}
+      {sidebarOpen && (
+        <div className="portal-backdrop" onClick={() => setSidebarOpen(false)}/>
+      )}
+
+      <aside className={`portal-sidebar${sidebarOpen ? ' sidebar-open' : ''}`}>
         {/* user card */}
         <div style={{display:'flex', alignItems:'center', gap:12, padding:'10px 12px', marginBottom:20}}>
           <div style={{
@@ -425,6 +430,7 @@ function PortalShell({user, navItems, current, onNav, children}) {
             <div style={{fontSize:13, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{user.name}</div>
             <div style={{fontSize:11, color:'var(--text-muted)'}}>{user.role}</div>
           </div>
+          <button className="sidebar-close-btn" onClick={() => setSidebarOpen(false)} aria-label="Close menu">✕</button>
         </div>
 
         <nav className="nav-items" style={{display:'flex', flexDirection:'column', gap:2, flex:1}}>
@@ -432,7 +438,7 @@ function PortalShell({user, navItems, current, onNav, children}) {
             if (item.divider) return <div key={item.divider} style={{fontSize:10, color:'var(--text-faint)', fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'14px 12px 6px'}}>{item.divider}</div>;
             const active = item.id === current;
             return (
-              <button key={item.id} onClick={()=>onNav(item.id)} style={{
+              <button key={item.id} onClick={()=>{onNav(item.id); setSidebarOpen(false);}} style={{
                 display:'flex', alignItems:'center', gap:12,
                 padding:'10px 12px', borderRadius:'var(--r-sm)',
                 background: active ? 'var(--surface-sunken)' : 'transparent',
@@ -449,14 +455,24 @@ function PortalShell({user, navItems, current, onNav, children}) {
           })}
         </nav>
 
-        <div className="card" style={{marginTop:'auto', padding:14, background:'var(--brand-50)', border:0}}>
+        <div className="card sidebar-help" style={{marginTop:'auto', padding:14, background:'var(--brand-50)', border:0}}>
           <div className="font-display" style={{fontSize:14, fontWeight:700, letterSpacing:'-0.01em', color:'var(--brand-900)'}}>Need help?</div>
           <div style={{fontSize:12, color:'var(--brand-700)', marginTop:4}}>Chat with our team 9 AM – 8 PM IST</div>
           <button className="btn btn-sm" style={{marginTop:10, background:'var(--brand-500)', color:'#fff', height:30, fontSize:12}}>Open chat</button>
         </div>
       </aside>
 
-      <main className="portal-main" style={{padding:'32px 36px', minWidth:0}}>{children}</main>
+      <main className="portal-main">
+        {/* Mobile top bar with hamburger */}
+        <div className="portal-mobile-header">
+          <button className="portal-hamburger" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+          </button>
+          <span style={{fontWeight:600, fontSize:15}}>{activeLabel}</span>
+          <div style={{width:28}}/>
+        </div>
+        <div className="portal-content">{children}</div>
+      </main>
     </div>
   );
 }
@@ -486,6 +502,7 @@ function StatusBadge({status}) {
     live:    { bg:'var(--success)', fg:'#fff', label:'Live'},
     pending: { bg:'#FEF3C7', fg:'#92400E', label:'Pending'},
     expired: { bg:'var(--surface-sunken)', fg:'var(--text-muted)', label:'Expired'},
+    paused:  { bg:'var(--surface-sunken)', fg:'var(--text-muted)', label:'Paused'},
     rented:  { bg:'var(--text)', fg:'var(--bg)', label:'Rented'},
     flagged: { bg:'#FEE2E2', fg:'#991B1B', label:'Flagged'},
     approved:{ bg:'var(--success)', fg:'#fff', label:'Approved'},
@@ -507,12 +524,12 @@ function StatusBadge({status}) {
 
 function DashHeader({title, subtitle, actions}) {
   return (
-    <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:28, gap:16, flexWrap:'wrap'}}>
+    <div className="dash-header">
       <div>
-        <h1 className="font-display" style={{fontSize:32, fontWeight:800, letterSpacing:'-0.035em', margin:0}}>{title}</h1>
+        <h1 className="font-display dash-title" style={{fontSize:32, fontWeight:800, letterSpacing:'-0.035em', margin:0}}>{title}</h1>
         {subtitle && <div style={{fontSize:14, color:'var(--text-muted)', marginTop:6}}>{subtitle}</div>}
       </div>
-      {actions && <div style={{display:'flex', gap:8}}>{actions}</div>}
+      {actions && <div className="dash-header-actions">{actions}</div>}
     </div>
   );
 }
@@ -608,13 +625,35 @@ function Footer({nav}: any) {
               Real estate, fair & simple. Owners list free, tenants pay one fee, brokers keep it all.
             </p>
           </div>
-          <FooterCol title="Buy" items={["Apartments","Villas","Plots","Commercial","Premium homes"]}/>
-          <FooterCol title="Company" items={[{l:"How it works", k:'how'}, "Pricing", "Blog", "About", "Press"]} nav={nav}/>
-          <FooterCol title="Support" items={["FAQ", "Contact", "Refund policy", "RERA compliance", "Grievance officer"]}/>
+          <FooterCol title="Buy" items={[
+            {l:"Apartments", href:'/buy'},
+            {l:"Villas",     href:'/buy'},
+            {l:"Plots",      href:'/buy'},
+            {l:"Commercial", href:'/buy'},
+            {l:"Premium homes", href:'/buy'},
+          ]}/>
+          <FooterCol title="Company" items={[
+            {l:"How it works", k:'how'},
+            {l:"Pricing",      k:'pricing'},
+            {l:"Blog",         k:'blog'},
+            {l:"About",        k:'about'},
+            {l:"Press",        k:'press'},
+          ]} nav={nav}/>
+          <FooterCol title="Support" items={[
+            {l:"FAQ",                k:'faq'},
+            {l:"Contact",            k:'contact'},
+            {l:"Refund policy",      k:'refund'},
+            {l:"RERA compliance",    k:'rera'},
+            {l:"Grievance officer",  k:'grievance'},
+          ]} nav={nav}/>
         </div>
         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:32, fontSize:12, opacity:.5}}>
           <div>© 2026 Urbify Technologies Pvt. Ltd.</div>
-          <div style={{display:'flex', gap:16}}><span>Privacy</span><span>Terms</span><span>Cookies</span></div>
+          <div style={{display:'flex', gap:16}}>
+            <span style={{cursor:'pointer'}} onClick={()=>nav('privacy')}>Privacy</span>
+            <span style={{cursor:'pointer'}} onClick={()=>nav('terms')}>Terms</span>
+            <span style={{cursor:'pointer'}} onClick={()=>nav('cookies')}>Cookies</span>
+          </div>
         </div>
       </div>
     </footer>
@@ -627,10 +666,13 @@ function FooterCol({title, items, nav}: any) {
       <ul style={{listStyle:'none', padding:0, margin:0, display:'flex', flexDirection:'column', gap:10}}>
         {items.map((it: any, i: number) => {
           const label = typeof it === 'string' ? it : it.l;
-          const k = typeof it === 'string' ? null : it.k;
+          const k    = typeof it === 'object' ? it.k    : null;
+          const href = typeof it === 'object' ? it.href : null;
+          const clickable = !!(k || href);
           return (
-            <li key={i} style={{fontSize:14, opacity:.8, cursor: k?'pointer':'default'}}
-                onClick={()=> k && nav(k)}>
+            <li key={i}
+                style={{fontSize:14, opacity:.8, cursor: clickable ? 'pointer' : 'default'}}
+                onClick={() => { if (k) nav(k); else if (href) window.location.href = href; }}>
               {label}
             </li>
           );

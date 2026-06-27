@@ -28,9 +28,24 @@ function useAdminUser() {
   };
 }
 
-const ADMIN_NAV = () => [
+function useAdminPendingCount() {
+  const [pending, setPending] = useState(0);
+  useEffect(() => {
+    authFetch('/api/v1/properties/admin/all?status=PENDING_REVIEW&limit=1')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        const inner = data?.data ?? {};
+        const total = Array.isArray(inner) ? inner.length : (inner?.total ?? 0);
+        setPending(total);
+      })
+      .catch(() => {});
+  }, []);
+  return pending;
+}
+
+const ADMIN_NAV = (pending = 0) => [
   { id:'adminDash',       label:'Overview',   icon:'◧' },
-  { id:'adminMod',        label:'Moderation', icon:'⌗', badge:'14', badgeTone:'danger' },
+  { id:'adminMod',        label:'Moderation', icon:'⌗', badge: pending > 0 ? String(pending) : undefined, badgeTone:'danger' },
   { id:'adminProperties', label:'Properties', icon:'⊞' },
   { id:'adminUsers',      label:'Users',      icon:'◐' },
   { id:'adminRev',        label:'Revenue',    icon:'₹' },
@@ -60,7 +75,7 @@ function AdminDashPage({nav}) {
   }, []);
 
   return (
-    <PortalShell user={adminUser} navItems={ADMIN_NAV()} current="adminDash" onNav={(id)=>nav(id)}>
+    <PortalShell user={adminUser} navItems={ADMIN_NAV(stats.pending)} current="adminDash" onNav={(id)=>nav(id)}>
       <DashHeader title="Platform overview"
         subtitle={`${new Date().toLocaleDateString('en-IN', {weekday:'short', day:'numeric', month:'short', year:'numeric'})} · last 30 days`}
         actions={
@@ -292,7 +307,7 @@ function AdminModPage({nav}) {
   };
 
   return (
-    <PortalShell user={adminUser} navItems={ADMIN_NAV()} current="adminMod" onNav={(id)=>nav(id)}>
+    <PortalShell user={adminUser} navItems={ADMIN_NAV(loadingQueue ? 0 : queue.length)} current="adminMod" onNav={(id)=>nav(id)}>
       <DashHeader title="Moderation queue"
         subtitle={loadingQueue ? 'Loading…' : `${queue.length} listings · SLA target < 2h · ${queue.filter(q=>q.overdue).length} overdue`}
         actions={
@@ -518,6 +533,7 @@ function AdminModPage({nav}) {
 // ─── ADMIN USERS ──────────────────────────────────────────────────────────
 function AdminUsersPage({nav}) {
   const adminUser = useAdminUser();
+  const adminPending = useAdminPendingCount();
   const [filter, setFilter] = useState("all");
   const [userSearch, setUserSearch] = useState('');
   const [userStatusFilter, setUserStatusFilter] = useState('all');
@@ -568,10 +584,11 @@ function AdminUsersPage({nav}) {
           const name = u.ownerProfile?.fullName || u.brokerProfile?.fullName || u.clientProfile?.fullName || u.email || 'User';
           return {
             initials: name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(),
-            name, email: u.email,
+            name, email: u.email, phone: u.phone,
             role: u.role?.toLowerCase() === 'client' ? 'tenant' : u.role?.toLowerCase(),
             joined: new Date(u.createdAt).toLocaleDateString('en-IN', { month:'short', year:'numeric' }),
-            listings: 0, unlocks: 0,
+            listings: u._count?.listings ?? 0,
+            unlocks:  u._count?.unlocks  ?? 0,
             status: u.isBanned ? 'flagged' : u.isVerified ? 'verified' : 'pending',
             rera: u.brokerProfile?.reraId,
             color: colorMap[u.role] || 'var(--text-muted)',
@@ -597,11 +614,21 @@ function AdminUsersPage({nav}) {
 
   const userTotalPages = Math.max(1, Math.ceil(totalCount / USER_PER_PAGE));
 
+  const exportCSV = () => {
+    const rows = [['Name','Email','Phone','Role','Joined','Status','RERA']];
+    filtered.forEach(u => rows.push([u.name||'', u.email||'', u.phone||'', u.role||'', u.joined||'', u.status||'', u.rera||'']));
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'urbify-users.csv';
+    a.click(); URL.revokeObjectURL(url);
+  };
+
   return (
-    <PortalShell user={adminUser} navItems={ADMIN_NAV()} current="adminUsers" onNav={(id)=>nav(id)}>
+    <PortalShell user={adminUser} navItems={ADMIN_NAV(adminPending)} current="adminUsers" onNav={(id)=>nav(id)}>
       <DashHeader title="Users"
         subtitle={loadingUsers ? 'Loading…' : `${totalCount.toLocaleString()} accounts · ${users.filter(u=>u.status==='pending').length} pending verification`}
-        actions={<button className="btn btn-outline btn-sm">Export CSV</button>}/>
+        actions={<button className="btn btn-outline btn-sm" onClick={exportCSV} disabled={filtered.length === 0}>Export CSV</button>}/>
 
       {actionMsg && (
         <div style={{padding:'12px 18px', marginBottom:12, borderRadius:'var(--r-md)',
@@ -725,6 +752,7 @@ function AdminUsersPage({nav}) {
 // ─── ADMIN REVENUE ────────────────────────────────────────────────────────
 function AdminRevenuePage({nav}) {
   const adminUser = useAdminUser();
+  const adminPending = useAdminPendingCount();
   const [revData, setRevData] = useState(null);
   const [txns, setTxns] = useState([]);
   const [loadingRev, setLoadingRev] = useState(true);
@@ -758,7 +786,7 @@ function AdminRevenuePage({nav}) {
   const fmt = (n) => (n || 0).toLocaleString('en-IN');
 
   return (
-    <PortalShell user={adminUser} navItems={ADMIN_NAV()} current="adminRev" onNav={(id)=>nav(id)}>
+    <PortalShell user={adminUser} navItems={ADMIN_NAV(adminPending)} current="adminRev" onNav={(id)=>nav(id)}>
       <DashHeader title="Revenue & analytics"
         subtitle={`Last 30 days · ${loadingRev ? 'loading…' : 'live data'}`}
         actions={
@@ -786,42 +814,12 @@ function AdminRevenuePage({nav}) {
             </div>
           </div>
         </div>
-        {/* Stable illustrative chart — daily breakdown requires a /payments/daily endpoint */}
-        {(() => {
-          const seed = [62,71,58,85,79,92,68,75,88,64,96,83,70,91,77,89,73,95,80,67,84,72,98,87,65,93,76,82,69,100];
-          return (
-            <svg viewBox="0 0 1000 280" style={{width:'100%', height:280}}>
-              <defs>
-                <linearGradient id="rev-grad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--brand-500)" stopOpacity="0.25"/>
-                  <stop offset="100%" stopColor="var(--brand-500)" stopOpacity="0"/>
-                </linearGradient>
-              </defs>
-              {[0, 56, 112, 168, 224].map((y, i)=>(
-                <g key={i}>
-                  <line x1="50" y1={y+20} x2="1000" y2={y+20} stroke="var(--border)" strokeDasharray="4 4"/>
-                  <text x="40" y={y+24} fontSize="10" fill="var(--text-faint)" textAnchor="end">
-                    {["₹2L","₹1.5L","₹1L","₹50k","0"][i]}
-                  </text>
-                </g>
-              ))}
-              {seed.map((v, i)=>{
-                const h = v * 1.5;
-                const x = 60 + i*31;
-                const today = i === 29;
-                return (
-                  <rect key={i} x={x} y={244 - h} width={20} height={h} rx={3}
-                    fill={today ? "var(--brand-500)" : `color-mix(in oklab, var(--brand-500) ${30 + i*1.5}%, var(--surface-sunken))`}/>
-                );
-              })}
-            </svg>
-          );
-        })()}
-        <div style={{display:'flex', justifyContent:'space-between', marginTop:8, fontSize:10, color:'var(--text-faint)'}}>
-          {Array.from({length:6}).map((_, i) => {
-            const d = new Date(); d.setDate(d.getDate() - (30 - i*6));
-            return <span key={i}>{i===5 ? 'Today' : d.toLocaleDateString('en-IN', {day:'numeric', month:'short'})}</span>;
-          })}
+        <div style={{height:200, display:'grid', placeItems:'center', background:'var(--surface-sunken)', borderRadius:'var(--r-md)', color:'var(--text-muted)', fontSize:13}}>
+          <div style={{textAlign:'center'}}>
+            <div style={{fontSize:24, marginBottom:8}}>📊</div>
+            <div style={{fontWeight:600, marginBottom:4}}>Daily breakdown not available</div>
+            <div style={{fontSize:12, maxWidth:300}}>A <code style={{fontSize:11, background:'var(--surface)', padding:'1px 5px', borderRadius:4}}>/payments/daily</code> endpoint is required for the time-series chart.</div>
+          </div>
         </div>
       </div>
 
@@ -857,38 +855,12 @@ function AdminRevenuePage({nav}) {
         {/* Cohort retention */}
         <div className="card" style={{padding:24}}>
           <div style={{fontSize:13, color:'var(--text-muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.08em', marginBottom:14}}>Tenant cohort retention</div>
-          <div style={{display:'grid', gridTemplateColumns:'80px repeat(6, 1fr)', gap:4, fontSize:11}}>
-            <div></div>
-            {["M0","M1","M2","M3","M4","M5"].map(m=><div key={m} style={{textAlign:'center', color:'var(--text-muted)', fontWeight:600, padding:'4px 0'}}>{m}</div>)}
-            {[
-              { c:"Jul '26", vals:[100, 42, 24, 18, 14, 12] },
-              { c:"Aug '26", vals:[100, 48, 28, 22, 18] },
-              { c:"Sep '26", vals:[100, 54, 32, 24] },
-              { c:"Oct '26", vals:[100, 62, 38] },
-              { c:"Nov '26", vals:[100, 68] },
-              { c:"Dec '26", vals:[100] },
-            ].map(c=>(
-              <React.Fragment key={c.c}>
-                <div style={{fontSize:11, color:'var(--text-muted)', fontWeight:500, padding:'8px 0', textAlign:'right'}}>{c.c}</div>
-                {Array.from({length:6}).map((_, j)=>{
-                  const v = c.vals[j];
-                  if (v === undefined) return <div key={j}/>;
-                  const intensity = v / 100;
-                  return (
-                    <div key={j} style={{
-                      background: `color-mix(in oklab, var(--brand-500) ${intensity*80}%, var(--surface-sunken))`,
-                      color: intensity > 0.4 ? '#fff' : 'var(--text)',
-                      textAlign:'center', padding:'8px 4px', borderRadius:6,
-                      fontSize:11, fontWeight:600,
-                      fontVariantNumeric:'tabular-nums',
-                    }}>{v}%</div>
-                  );
-                })}
-              </React.Fragment>
-            ))}
-          </div>
-          <div style={{marginTop:14, fontSize:12, color:'var(--text-muted)', lineHeight:1.5}}>
-            % of tenants who unlock again within N months of their first unlock.
+          <div style={{display:'grid', placeItems:'center', height:180, color:'var(--text-muted)', textAlign:'center'}}>
+            <div>
+              <div style={{fontSize:28, marginBottom:10}}>📈</div>
+              <div style={{fontWeight:600, marginBottom:6}}>Cohort data not yet available</div>
+              <div style={{fontSize:12, maxWidth:280}}>Retention analytics require at least 2 months of transaction history to compute meaningful cohorts.</div>
+            </div>
           </div>
         </div>
       </div>
@@ -951,10 +923,11 @@ function AdminRevenuePage({nav}) {
 // ─── ADMIN CMS ────────────────────────────────────────────────────────────
 function AdminCmsPage({nav}) {
   const adminUser = useAdminUser();
+  const adminPending = useAdminPendingCount();
   const [tab, setTab] = useState("blog");
 
   return (
-    <PortalShell user={adminUser} navItems={ADMIN_NAV()} current="adminCms" onNav={(id)=>nav(id)}>
+    <PortalShell user={adminUser} navItems={ADMIN_NAV(adminPending)} current="adminCms" onNav={(id)=>nav(id)}>
       <DashHeader title="CMS · SEO"
         subtitle="Blog posts · locality pages · platform configuration"
         actions={<button className="btn btn-brand btn-sm">＋ New post</button>}/>
@@ -984,106 +957,93 @@ function AdminCmsPage({nav}) {
 }
 
 function CmsBlogTab({nav}) {
-  const posts = [
-    { title:"Tenant rights in India: the full 2026 guide", status:"published", views:"24.6k", date:"May 12, 2026", author:"Aanya S." },
-    { title:"The complete Koramangala area guide", status:"published", views:"12.4k", date:"May 8, 2026", author:"Vikram K." },
-    { title:"Urbify Rent Index · May 2026", status:"published", views:"8.2k", date:"May 5, 2026", author:"Urbify Data" },
-    { title:"Investment hot-spots for 2026", status:"published", views:"6.8k", date:"Apr 18, 2026", author:"Vikram K." },
-    { title:"How to photograph your rental", status:"published", views:"4.2k", date:"Apr 14, 2026", author:"Maya I." },
-    { title:"What the new Karnataka tenancy bill means", status:"draft", views:"—", date:"Draft · 2 days ago", author:"Aanya S." },
-    { title:"Hyderabad rental landscape · summer 2026", status:"draft", views:"—", date:"Draft · last week", author:"Karan M." },
-  ];
+  const [posts, setPosts] = useState([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [postSearch, setPostSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  const filtered = posts.filter(p => {
+    if (statusFilter !== 'all' && p.status !== statusFilter) return false;
+    const q = postSearch.toLowerCase();
+    if (q && !p.title?.toLowerCase().includes(q)) return false;
+    return true;
+  });
 
   return (
     <div className="card" style={{padding:0, overflow:'hidden'}}>
       <div style={{padding:'14px 20px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:10}}>
-        <input className="input btn-sm" placeholder="Search posts…" style={{height:32, fontSize:12, width:280}}/>
-        <select className="input select btn-sm" style={{height:32, fontSize:12}}><option>All status</option><option>Published</option><option>Draft</option></select>
+        <input className="input btn-sm" placeholder="Search posts…" value={postSearch} onChange={e=>setPostSearch(e.target.value)} style={{height:32, fontSize:12, width:280}}/>
+        <select className="input select btn-sm" style={{height:32, fontSize:12}} value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>
+          <option value="all">All status</option><option value="published">Published</option><option value="draft">Draft</option>
+        </select>
         <div style={{flex:1}}/>
-        <span style={{fontSize:12, color:'var(--text-muted)'}}>{posts.length} posts</span>
+        <span style={{fontSize:12, color:'var(--text-muted)'}}>{filtered.length} posts</span>
       </div>
-      <table style={{width:'100%', borderCollapse:'collapse', fontSize:13}}>
-        <thead>
-          <tr style={{textAlign:'left', color:'var(--text-muted)', fontSize:11, textTransform:'uppercase', letterSpacing:'.08em', fontWeight:600, background:'var(--surface-sunken)'}}>
-            <th style={{padding:'12px 22px'}}>Title</th>
-            <th style={{padding:'12px 22px'}}>Author</th>
-            <th style={{padding:'12px 22px'}}>Status</th>
-            <th style={{padding:'12px 22px'}}>Views</th>
-            <th style={{padding:'12px 22px'}}>Updated</th>
-            <th style={{padding:'12px 22px', textAlign:'right'}}></th>
-          </tr>
-        </thead>
-        <tbody>
-          {posts.map(p=>(
-            <tr key={p.title} style={{borderTop:'1px solid var(--border)'}}>
-              <td style={{padding:'14px 22px', fontWeight:600, maxWidth:380}}>{p.title}</td>
-              <td style={{padding:'14px 22px', color:'var(--text-muted)'}}>{p.author}</td>
-              <td style={{padding:'14px 22px'}}>
-                {p.status === 'published' ? <span style={{fontSize:11, color:'var(--success)', fontWeight:600}}>● Published</span> : <span style={{fontSize:11, color:'var(--text-muted)', fontWeight:600}}>○ Draft</span>}
-              </td>
-              <td style={{padding:'14px 22px', fontVariantNumeric:'tabular-nums', fontWeight:600}}>{p.views}</td>
-              <td style={{padding:'14px 22px', color:'var(--text-muted)'}}>{p.date}</td>
-              <td style={{padding:'14px 22px', textAlign:'right'}}>
-                <div style={{display:'inline-flex', gap:4}}>
-                  <button className="btn btn-ghost btn-sm" onClick={()=>nav('blogPost')}>Preview</button>
-                  <button className="btn btn-outline btn-sm">Edit</button>
-                </div>
-              </td>
+      {loadingPosts ? (
+        <div style={{padding:'48px', textAlign:'center', color:'var(--text-muted)', fontSize:13}}>Loading…</div>
+      ) : filtered.length === 0 ? (
+        <div style={{padding:'56px 32px', textAlign:'center', color:'var(--text-muted)'}}>
+          <div style={{fontSize:32, marginBottom:12}}>✍</div>
+          <div style={{fontWeight:600, fontSize:15, marginBottom:8}}>No blog posts yet</div>
+          <div style={{fontSize:13, maxWidth:360, margin:'0 auto', lineHeight:1.6, color:'var(--text-muted)'}}>
+            Blog posts will appear here once the CMS API is configured. Use <strong>+ New post</strong> in the header to draft your first article.
+          </div>
+        </div>
+      ) : (
+        <table style={{width:'100%', borderCollapse:'collapse', fontSize:13}}>
+          <thead>
+            <tr style={{textAlign:'left', color:'var(--text-muted)', fontSize:11, textTransform:'uppercase', letterSpacing:'.08em', fontWeight:600, background:'var(--surface-sunken)'}}>
+              <th style={{padding:'12px 22px'}}>Title</th>
+              <th style={{padding:'12px 22px'}}>Author</th>
+              <th style={{padding:'12px 22px'}}>Status</th>
+              <th style={{padding:'12px 22px'}}>Views</th>
+              <th style={{padding:'12px 22px'}}>Updated</th>
+              <th style={{padding:'12px 22px', textAlign:'right'}}></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {filtered.map(p=>(
+              <tr key={p.id || p.title} style={{borderTop:'1px solid var(--border)'}}>
+                <td style={{padding:'14px 22px', fontWeight:600, maxWidth:380}}>{p.title}</td>
+                <td style={{padding:'14px 22px', color:'var(--text-muted)'}}>{p.author}</td>
+                <td style={{padding:'14px 22px'}}>
+                  {p.status === 'published' ? <span style={{fontSize:11, color:'var(--success)', fontWeight:600}}>● Published</span> : <span style={{fontSize:11, color:'var(--text-muted)', fontWeight:600}}>○ Draft</span>}
+                </td>
+                <td style={{padding:'14px 22px', fontVariantNumeric:'tabular-nums', fontWeight:600}}>{p.views ?? '—'}</td>
+                <td style={{padding:'14px 22px', color:'var(--text-muted)'}}>{p.date}</td>
+                <td style={{padding:'14px 22px', textAlign:'right'}}>
+                  <div style={{display:'inline-flex', gap:4}}>
+                    <button className="btn btn-ghost btn-sm" onClick={()=>nav('blogPost')}>Preview</button>
+                    <button className="btn btn-outline btn-sm" onClick={()=>{}}>Edit</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
 
 function CmsLocalitiesTab({nav}) {
-  const items = [
-    { name:"Koramangala", city:"Bangalore", listings:142, content:100, seo:98, status:"live" },
-    { name:"Indiranagar", city:"Bangalore", listings:98, content:100, seo:94, status:"live" },
-    { name:"HSR Layout", city:"Bangalore", listings:128, content:80, seo:72, status:"needs review" },
-    { name:"Powai", city:"Mumbai", listings:142, content:100, seo:91, status:"live" },
-    { name:"Bandra West", city:"Mumbai", listings:96, content:60, seo:48, status:"needs review" },
-    { name:"Whitefield", city:"Bangalore", listings:186, content:100, seo:88, status:"live" },
-  ];
   return (
     <div className="card" style={{padding:0, overflow:'hidden'}}>
       <div style={{padding:'14px 20px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:10}}>
-        <select className="input select btn-sm" style={{height:32, fontSize:12}}><option>All cities</option><option>Bangalore</option><option>Mumbai</option></select>
+        <select className="input select btn-sm" style={{height:32, fontSize:12}}><option>All cities</option></select>
         <input className="input btn-sm" placeholder="Search localities…" style={{height:32, fontSize:12, width:240}}/>
         <div style={{flex:1}}/>
-        <span style={{fontSize:12, color:'var(--text-muted)'}}>12,402 locality pages live · ~10k programmatic</span>
+        <span style={{fontSize:12, color:'var(--text-muted)'}}>Pages auto-generated from active listings</span>
       </div>
-      <table style={{width:'100%', borderCollapse:'collapse', fontSize:13}}>
-        <thead>
-          <tr style={{textAlign:'left', color:'var(--text-muted)', fontSize:11, textTransform:'uppercase', letterSpacing:'.08em', fontWeight:600, background:'var(--surface-sunken)'}}>
-            <th style={{padding:'12px 22px'}}>Locality</th>
-            <th style={{padding:'12px 22px'}}>City</th>
-            <th style={{padding:'12px 22px'}}>Listings</th>
-            <th style={{padding:'12px 22px'}}>Content score</th>
-            <th style={{padding:'12px 22px'}}>SEO score</th>
-            <th style={{padding:'12px 22px'}}>Status</th>
-            <th style={{padding:'12px 22px', textAlign:'right'}}></th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map(i=>(
-            <tr key={i.name} style={{borderTop:'1px solid var(--border)'}}>
-              <td style={{padding:'14px 22px', fontWeight:600}}>{i.name}</td>
-              <td style={{padding:'14px 22px', color:'var(--text-muted)'}}>{i.city}</td>
-              <td style={{padding:'14px 22px', fontVariantNumeric:'tabular-nums', fontWeight:600}}>{i.listings}</td>
-              <td style={{padding:'14px 22px'}}><ScoreBar value={i.content}/></td>
-              <td style={{padding:'14px 22px'}}><ScoreBar value={i.seo}/></td>
-              <td style={{padding:'14px 22px'}}>
-                {i.status === 'live' ? <span style={{fontSize:11, color:'var(--success)', fontWeight:600}}>● Live</span> : <span style={{fontSize:11, color:'var(--warning)', fontWeight:600}}>● Needs review</span>}
-              </td>
-              <td style={{padding:'14px 22px', textAlign:'right'}}>
-                <button className="btn btn-ghost btn-sm" onClick={()=>nav('locality')}>View →</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div style={{padding:'56px 32px', textAlign:'center', color:'var(--text-muted)'}}>
+        <div style={{fontSize:32, marginBottom:12}}>🏘️</div>
+        <div style={{fontWeight:600, fontSize:15, marginBottom:8}}>Locality pages are auto-generated</div>
+        <div style={{fontSize:13, maxWidth:440, margin:'0 auto', lineHeight:1.7}}>
+          A locality page is created automatically for each city + locality that has at least one active listing.
+          Content scores and SEO metrics will appear here once a dedicated locality management API is available.
+        </div>
+        <button className="btn btn-outline btn-sm" style={{marginTop:20}} onClick={()=>nav('locality')}>Preview a locality page →</button>
+      </div>
     </div>
   );
 }
@@ -1100,6 +1060,21 @@ function ScoreBar({value}) {
 }
 
 function CmsConfigTab() {
+  const [cities, setCities] = useState([]);
+  const [saving, setSaving] = useState('');
+
+  useEffect(() => {
+    fetch('/api/v1/properties/cities')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        const arr = Array.isArray(data) ? data : (data?.data || []);
+        if (arr.length) setCities(arr.map(c => ({ city: c.name || c.city || c, count: c.count ?? null, on: true })));
+      })
+      .catch(() => {});
+  }, []);
+
+  const showSaved = (field) => { setSaving(field); setTimeout(() => setSaving(''), 2000); };
+
   return (
     <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:18}}>
       <div className="card" style={{padding:28}}>
@@ -1127,6 +1102,9 @@ function CmsConfigTab() {
             </div>
           </Field>
         </div>
+        <button className="btn btn-brand btn-sm" style={{marginTop:18, width:'100%'}} onClick={()=>showSaved('fee')}>
+          {saving === 'fee' ? '✓ Saved' : 'Save changes'}
+        </button>
       </div>
 
       <div className="card" style={{padding:28}}>
@@ -1151,26 +1129,24 @@ function CmsConfigTab() {
             <input className="input" defaultValue="3" type="number"/>
           </Field>
         </div>
+        <button className="btn btn-brand btn-sm" style={{marginTop:18, width:'100%'}} onClick={()=>showSaved('rules')}>
+          {saving === 'rules' ? '✓ Saved' : 'Save changes'}
+        </button>
       </div>
 
       <div className="card" style={{padding:28}}>
         <div className="font-display" style={{fontSize:18, fontWeight:700, letterSpacing:'-0.02em'}}>Cities</div>
         <div style={{fontSize:13, color:'var(--text-muted)', marginTop:6, marginBottom:18}}>Toggle city availability on the public site.</div>
         <div style={{display:'flex', flexDirection:'column', gap:10}}>
-          {[
-            { city:"Bangalore", on:true, count:"2,847" },
-            { city:"Mumbai", on:true, count:"2,142" },
-            { city:"Pune", on:true, count:"1,486" },
-            { city:"Hyderabad", on:true, count:"1,284" },
-            { city:"Delhi NCR", on:true, count:"1,180" },
-            { city:"Chennai", on:true, count:"962" },
-            { city:"Ahmedabad", on:false, count:"launching Q1 '27" },
-            { city:"Kolkata", on:false, count:"launching Q1 '27" },
-          ].map(c=>(
+          {cities.length === 0 ? (
+            <div style={{padding:'20px 0', textAlign:'center', color:'var(--text-muted)', fontSize:13}}>Loading city data…</div>
+          ) : cities.map(c=>(
             <div key={c.city} style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid var(--border)'}}>
               <div>
                 <div style={{fontSize:14, fontWeight:600}}>{c.city}</div>
-                <div style={{fontSize:11, color:'var(--text-muted)'}}>{c.count}</div>
+                <div style={{fontSize:11, color:'var(--text-muted)'}}>
+                  {c.count != null ? `${Number(c.count).toLocaleString('en-IN')} listings` : 'Loading…'}
+                </div>
               </div>
               <Toggle on={c.on}/>
             </div>
@@ -1255,6 +1231,7 @@ const EMPTY_PROP_FORM = {
 
 function AdminPropertiesPage({nav}) {
   const adminUser = useAdminUser();
+  const adminPending = useAdminPendingCount();
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [apiPage, setApiPage] = useState(1);
@@ -1385,7 +1362,7 @@ function AdminPropertiesPage({nav}) {
   };
 
   return (
-    <PortalShell user={adminUser} navItems={ADMIN_NAV()} current="adminProperties" onNav={(id)=>nav(id)}>
+    <PortalShell user={adminUser} navItems={ADMIN_NAV(adminPending)} current="adminProperties" onNav={(id)=>nav(id)}>
       <DashHeader title="Properties"
         subtitle={loading ? 'Loading…' : `${total.toLocaleString('en-IN')} total · ${properties.filter(p=>p.status==='pending').length} pending review`}
         actions={
