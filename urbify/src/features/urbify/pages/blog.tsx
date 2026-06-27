@@ -200,7 +200,6 @@ function BlogPage({nav}) {
         </div>
       </section>
 
-      <Footer nav={nav}/>
     </div>
   );
 }
@@ -355,7 +354,6 @@ function BlogPostPage({nav}) {
         </section>
       </article>
 
-      <Footer nav={nav}/>
     </div>
   );
 }

@@ -200,9 +200,8 @@ function OwnerDashPage({nav}) {
   const { authUser } = useAppData();
   const [myListings, setMyListings] = useState([]);
   const [loadingListings, setLoadingListings] = useState(true);
-  // The listing the owner clicked "View" on — shown in a modal with view +
-  // edit modes instead of redirecting away to the public listing page.
   const [viewListing, setViewListing] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const loadListings = useCallback(() => {
     if (!localStorage.getItem('urb_access')) { setLoadingListings(false); return; }
@@ -249,11 +248,30 @@ function OwnerDashPage({nav}) {
     } catch(e) { console.error(e); }
   };
 
+  const handleExport = () => {
+    const headers = ['ID', 'Property', 'Status', 'Unlocks', 'Days Left', 'Rent (₹/mo)'];
+    const rows = myListings.map(l => [
+      l.id,
+      `${l.bhk} BHK · ${l.locality}`,
+      l.status,
+      l.unlocks,
+      l.daysLeft,
+      l.raw?.rentOrPrice || 0,
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'my-listings.csv'; a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const userName = authUser?.ownerProfile?.fullName || authUser?.brokerProfile?.fullName || 'there';
   const firstName = userName.split(' ')[0];
   const activeCount = myListings.filter(l => l.status === 'live').length;
   const unlocksThisMonth = myListings.reduce((s, l) => s + (l.unlocks || 0), 0);
   const expiringCount = myListings.filter(l => typeof l.daysLeft === 'number' && l.daysLeft <= 3).length;
+  const filteredListings = statusFilter === 'all' ? myListings : myListings.filter(l => l.status === statusFilter);
 
   const navItems = OWNER_NAV(myListings.length || undefined, undefined);
   const portalUser = authUser ? {
@@ -272,7 +290,7 @@ function OwnerDashPage({nav}) {
         subtitle="Here's how your listings are doing."
         actions={
           <>
-            <button className="btn btn-outline btn-sm">Export</button>
+            <button className="btn btn-outline btn-sm" onClick={handleExport} disabled={myListings.length === 0}>Export CSV</button>
             <button className="btn btn-brand btn-sm" onClick={()=>nav('ownerNew')}>＋ New listing</button>
           </>
         }/>
@@ -293,7 +311,7 @@ function OwnerDashPage({nav}) {
             <div style={{fontSize:12, color:'#92400E'}}>Renew now to keep them live and visible to new tenants.</div>
           </div>
         </div>
-        <button className="btn btn-sm" style={{background:'#78350F', color:'#fff', border:0}}>Renew →</button>
+        <button className="btn btn-sm" style={{background:'#78350F', color:'#fff', border:0}} onClick={()=>nav('ownerList')}>View listings →</button>
       </div>
       )}
 
@@ -302,8 +320,8 @@ function OwnerDashPage({nav}) {
         <div style={{padding:'18px 22px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
           <div className="font-display" style={{fontSize:18, fontWeight:700, letterSpacing:'-0.02em'}}>Your listings</div>
           <div style={{display:'flex', gap:6}}>
-            {["All","Live","Pending","Rented"].map((t, i)=>(
-              <button key={t} className="chip" style={{cursor:'pointer', background:i===0?'var(--text)':'transparent', color:i===0?'var(--bg)':'var(--text)', border:i===0?0:'1px solid var(--border)'}}>{t}</button>
+            {([['All','all'],['Live','live'],['Pending','pending'],['Rented','rented'],['Paused','paused']] as [string,string][]).map(([label, val])=>(
+              <button key={val} className="chip" onClick={()=>setStatusFilter(val)} style={{cursor:'pointer', background:statusFilter===val?'var(--text)':'transparent', color:statusFilter===val?'var(--bg)':'var(--text)', border:statusFilter===val?0:'1px solid var(--border)'}}>{label}</button>
             ))}
           </div>
         </div>
@@ -319,7 +337,13 @@ function OwnerDashPage({nav}) {
             </tr>
           </thead>
           <tbody>
-            {myListings.map(l=>(
+            {loadingListings ? (
+              <tr><td colSpan={6} style={{padding:'32px 22px', textAlign:'center', color:'var(--text-muted)', fontSize:14}}>Loading…</td></tr>
+            ) : filteredListings.length === 0 ? (
+              <tr><td colSpan={6} style={{padding:'32px 22px', textAlign:'center', color:'var(--text-muted)', fontSize:14}}>
+                {myListings.length === 0 ? 'No listings yet. Add your first listing to get started.' : `No ${statusFilter} listings.`}
+              </td></tr>
+            ) : filteredListings.map(l=>(
               <tr key={l.id} style={{borderTop:'1px solid var(--border)'}}>
                 <td style={{padding:'14px 22px'}}>
                   <div style={{display:'flex', alignItems:'center', gap:12}}>
@@ -332,12 +356,14 @@ function OwnerDashPage({nav}) {
                 </td>
                 <td style={{padding:'14px 22px'}}><StatusBadge status={l.status}/></td>
                 <td style={{padding:'14px 22px', fontWeight:600, fontVariantNumeric:'tabular-nums'}}>{l.unlocks}</td>
-                <td style={{padding:'14px 22px', color:'var(--text-muted)', fontVariantNumeric:'tabular-nums'}}>{l.daysLeft}</td>
+                <td style={{padding:'14px 22px', color: typeof l.daysLeft === 'number' && l.daysLeft <= 3 ? 'var(--warning)' : 'var(--text-muted)', fontVariantNumeric:'tabular-nums', fontWeight: typeof l.daysLeft === 'number' && l.daysLeft <= 3 ? 600 : 400}}>{l.daysLeft}</td>
                 <td style={{padding:'14px 22px', fontWeight:600}}>₹{l.rentK}k</td>
                 <td style={{padding:'14px 22px', textAlign:'right'}}>
                   <div style={{display:'inline-flex', gap:4}}>
                     <button className="btn btn-ghost btn-sm" onClick={()=>setViewListing(l)}>View</button>
-                    <button className="btn btn-outline btn-sm" onClick={() => handleTogglePause(l.id, l.status)}>{l.status === 'paused' ? 'Resume' : 'Pause'}</button>
+                    {(l.status === 'live' || l.status === 'paused') && (
+                      <button className="btn btn-outline btn-sm" onClick={() => handleTogglePause(l.id, l.status)}>{l.status === 'paused' ? 'Resume' : 'Pause'}</button>
+                    )}
                     <button className="btn btn-outline btn-sm" style={{color:'var(--danger)', borderColor:'var(--danger)'}} onClick={() => handleDelete(l.id)}>Delete</button>
                   </div>
                 </td>
@@ -473,7 +499,7 @@ function OwnerListPage({nav}) {
               <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginTop:14, fontSize:11, color:'var(--text-muted)'}}>
                 <div><div style={{fontSize:18, fontWeight:700, color:'var(--text)'}}>{l.unlocks ?? 0}</div>unlocks</div>
                 <div><div style={{fontSize:18, fontWeight:700, color:'var(--text)'}}>{l.viewCount ?? l.pop ?? 0}</div>views</div>
-                <div><div style={{fontSize:18, fontWeight:700, color:'var(--text)'}}>—</div>shortlists</div>
+                <div><div style={{fontSize:18, fontWeight:700, color:'var(--text)'}}>{l.raw?.shortlistCount ?? 0}</div>shortlists</div>
               </div>
 
               <div style={{display:'flex', gap:6, marginTop:14}}>
@@ -507,28 +533,87 @@ function OwnerInquiriesPage({nav, navItems: navItemsProp = null, navCurrent = 'o
 
   const [inquiries, setInquiries] = useState([]);
   const [loadingInquiries, setLoadingInquiries] = useState(true);
+  const [viewListing, setViewListing] = useState(null);
+  const [markingRead, setMarkingRead] = useState(false);
+
+  const formatWhen = (iso) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const now = Date.now();
+    const diff = now - d.getTime();
+    if (diff < 60000) return 'just now';
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+    if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`;
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  };
+
+  const maskPhone = (phone) => {
+    if (!phone) return 'Tenant';
+    const s = String(phone);
+    if (s.length <= 4) return s;
+    return s.slice(0, -4).replace(/\d/g, '•') + s.slice(-4);
+  };
+
+  const normalizeUnlock = (item) => ({
+    kind: 'unlock',
+    who: item.user?.name || maskPhone(item.user?.phone) || 'Tenant',
+    listing: {
+      photo: item.property?.photos?.[0] || '',
+      bhk: item.property?.bhk ?? '?',
+      locality: item.property?.locality || '—',
+      id: item.propertyId || item.property?.id,
+    },
+    when: formatWhen(item.createdAt),
+    amount: item.amount,
+    propertyId: item.propertyId || item.property?.id,
+    raw: item,
+  });
 
   useEffect(() => {
     setLoadingInquiries(true);
-    const token = localStorage.getItem('urb_access');
-    if (!token) { setLoadingInquiries(false); return; }
+    if (!localStorage.getItem('urb_access')) { setLoadingInquiries(false); return; }
     authFetch('/api/v1/properties/my/unlocks')
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (data && Array.isArray(data.items)) setInquiries(data.items);
-        else if (Array.isArray(data)) setInquiries(data);
-        else setInquiries([]);
+        const arr = Array.isArray(data) ? data : (data?.items || data?.data || []);
+        setInquiries(arr.map(normalizeUnlock));
       })
       .catch(() => setInquiries([]))
       .finally(() => setLoadingInquiries(false));
   }, []);
 
+  const handleMarkAllRead = async () => {
+    setMarkingRead(true);
+    try {
+      await authFetch('/api/v1/notifications/read-all', { method: 'POST' });
+    } catch(e) { console.error(e); }
+    finally { setMarkingRead(false); }
+  };
+
+  const handleViewListing = async (propertyId) => {
+    if (!propertyId) return;
+    try {
+      const res = await authFetch(`/api/v1/properties/${propertyId}`);
+      if (res.ok) {
+        const body = await res.json();
+        const raw = body?.data ?? body;
+        setViewListing({
+          ...normalizeApiListing(raw),
+          raw,
+          status: raw.status === 'ACTIVE' ? 'live' : raw.status === 'PENDING_REVIEW' ? 'pending' : raw.status === 'RENTED' ? 'rented' : 'paused',
+        });
+      }
+    } catch(e) { console.error(e); }
+  };
+
   const items = inquiries;
   return (
+    <>
     <PortalShell user={portalUser} navItems={navItems} current={navCurrent} onNav={(id)=>nav(id)}>
       <DashHeader title="Inquiries"
-        subtitle="A feed of everything that's happened on your listings."
-        actions={<button className="btn btn-outline btn-sm">Mark all read</button>}/>
+        subtitle={`${items.length} unlock${items.length !== 1 ? 's' : ''} on your listings.`}
+        actions={<button className="btn btn-outline btn-sm" onClick={handleMarkAllRead} disabled={markingRead}>{markingRead ? 'Marking…' : 'Mark all read'}</button>}/>
 
       <div className="card" style={{padding:0, overflow:'hidden'}}>
         {loadingInquiries ? (
@@ -552,11 +637,19 @@ function OwnerInquiriesPage({nav, navItems: navItemsProp = null, navCurrent = 'o
               <div style={{fontSize:11, color:'var(--text-faint)', marginTop:2}}>{a.when}</div>
             </div>
             {a.amount && <div style={{fontWeight:700, color:'var(--success)', fontSize:15}}>+₹{a.amount.toLocaleString("en-IN")}</div>}
-            <button className="btn btn-outline btn-sm">View →</button>
+            <button className="btn btn-outline btn-sm" onClick={()=>handleViewListing(a.propertyId)}>View →</button>
           </div>
         ))}
       </div>
     </PortalShell>
+    {viewListing && (
+      <OwnerListingModal
+        listing={viewListing}
+        onClose={()=>setViewListing(null)}
+        onSaved={()=>setViewListing(null)}
+      />
+    )}
+    </>
   );
 }
 
@@ -595,6 +688,7 @@ function OwnerNewPage({nav}) {
     isNegotiable: false,
     amenities: [],
     location: {},
+    tourUrl: '',
   });
   const patchForm = (patch) => setFormData(f => ({...f, ...patch}));
 
@@ -692,7 +786,7 @@ function OwnerNewPage({nav}) {
         {step === 1 && <StepDetails formData={formData} patchForm={patchForm} onNext={()=>setStep(2)} onBack={()=>setStep(0)}/>}
         {step === 2 && <StepLocation onNext={()=>setStep(3)} onBack={()=>setStep(1)} formData={formData} setFormData={setFormData}/>}
         {step === 3 && <StepPricing formData={formData} patchForm={patchForm} onNext={()=>setStep(4)} onBack={()=>setStep(2)}/>}
-        {step === 4 && <StepPhotos onNext={()=>setStep(5)} onBack={()=>setStep(3)} photos={uploadedPhotos} setPhotos={setUploadedPhotos}/>}
+        {step === 4 && <StepPhotos onNext={()=>setStep(5)} onBack={()=>setStep(3)} photos={uploadedPhotos} setPhotos={setUploadedPhotos} formData={formData} patchForm={patchForm}/>}
         {step === 5 && <StepReview formData={formData} onNext={handleSubmit} onBack={()=>setStep(4)} submitting={submitting}/>}
       </div>
     </PortalShell>
@@ -1107,7 +1201,7 @@ function StepPricing({formData, patchForm, onNext, onBack}) {
   );
 }
 
-function StepPhotos({onNext, onBack, photos, setPhotos}) {
+function StepPhotos({onNext, onBack, photos, setPhotos, formData = {}, patchForm = (_p) => {}}) {
   // photos/setPhotos are lifted to the parent wizard so the uploaded S3
   // keys/URLs survive into handleSubmit and get attached to the listing
   // once it's created. Shape: [{id, preview, file, uploading, url, key, error}]
@@ -1229,7 +1323,8 @@ function StepPhotos({onNext, onBack, photos, setPhotos}) {
       </div>
 
       <Field label="Virtual tour link (optional)" style={{marginTop:24}}>
-        <input className="input" placeholder="https://youtube.com/... or Matterport URL"/>
+        <input className="input" placeholder="https://youtube.com/... or Matterport URL"
+          value={formData.tourUrl || ''} onChange={e=>patchForm({tourUrl:e.target.value})}/>
       </Field>
 
       <WizardNav onBack={onBack} onNext={handleNext} nextLabel="Continue"/>

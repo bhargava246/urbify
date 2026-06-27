@@ -88,16 +88,23 @@ function SearchPage({nav, savedIds, onSave, onUnlock, initialSearchParams}) {
     return r;
   }, [baseListings, bhkSel, bhkTouched, price, priceTouched, furn, sort]);
 
+  // Derive a display location from the active search query or first result's city
+  const locationLabel = useMemo(() => {
+    if (searchQ) return searchQ;
+    const first = filtered[0] ?? ctxListings[0];
+    return first?.city || 'India';
+  }, [searchQ, filtered, ctxListings]);
+
   return (
     <div>
       {/* breadcrumb / search header */}
       <div style={{borderBottom:'1px solid var(--border)', background:'var(--surface)', padding:'18px 28px'}}>
-        <div style={{maxWidth:1440, margin:'0 auto', display:'flex', alignItems:'center', gap:14, flexWrap:'wrap'}}>
+        <div className="search-header-bar" style={{maxWidth:1440, margin:'0 auto', display:'flex', alignItems:'center', gap:14, flexWrap:'wrap'}}>
           <div style={{fontSize:12, color:'var(--text-muted)'}}>
-            <span style={{cursor:'pointer'}} onClick={()=>nav('home')}>Home</span> / Rent / <span style={{color:'var(--text)'}}>Jaipur</span>
+            <span style={{cursor:'pointer'}} onClick={()=>nav('home')}>Home</span> / Rent / <span style={{color:'var(--text)'}}>{locationLabel}</span>
           </div>
           <div style={{flex:1}}/>
-          <div style={{display:'flex', gap:8, alignItems:'center', minWidth:380}}>
+          <div className="search-header-right" style={{display:'flex', gap:8, alignItems:'center', minWidth:380}}>
             <div style={{flex:1, position:'relative'}}>
               <LocationAutocomplete value={searchQ} onChange={setSearchQ} placeholder="Search locality, city, landmark…"/>
             </div>
@@ -106,10 +113,10 @@ function SearchPage({nav, savedIds, onSave, onUnlock, initialSearchParams}) {
         </div>
       </div>
 
-      <div style={{maxWidth:1440, margin:'0 auto', padding:'24px 28px', display:'grid', gridTemplateColumns: showMap ? '280px 1fr 420px' : '280px 1fr', gap:24, alignItems:'start'}}>
+      <div className="search-page-grid" style={{maxWidth:1440, margin:'0 auto', padding:'24px 28px', display:'grid', gridTemplateColumns: showMap ? '280px 1fr 420px' : '280px 1fr', gap:24, alignItems:'start'}}>
 
         {/* ─── Filters ──────────────────────────────────── */}
-        <aside style={{position:'sticky', top:88, maxHeight:'calc(100vh - 100px)', overflow:'auto', paddingRight:4}}>
+        <aside className="search-filter-aside" style={{position:'sticky', top:88, maxHeight:'calc(100vh - 100px)', overflow:'auto', paddingRight:4}}>
           <div className="card" style={{padding:0, overflow:'hidden'}}>
             <div style={{padding:'14px 18px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
               <div style={{fontSize:13, fontWeight:600}}>Filters</div>
@@ -172,7 +179,7 @@ function SearchPage({nav, savedIds, onSave, onUnlock, initialSearchParams}) {
           <div style={{display:'flex', alignItems:'baseline', justifyContent:'space-between', marginBottom:16, gap:16, flexWrap:'wrap'}}>
             <div>
               <h1 className="font-display" style={{fontSize:28, fontWeight:800, letterSpacing:'-0.03em', margin:0}}>
-                {filtered.length} homes for rent in Jaipur
+                {filtered.length} homes for rent in {locationLabel}
               </h1>
               <div style={{display:'flex', gap:8, marginTop:10, flexWrap:'wrap'}}>
                 {bhkSel.map(b=><span key={b} className="chip">{b} BHK <Icon.close/></span>)}
@@ -190,7 +197,7 @@ function SearchPage({nav, savedIds, onSave, onUnlock, initialSearchParams}) {
             </div>
           </div>
 
-          <div style={{display:'grid', gridTemplateColumns: showMap ? '1fr 1fr' : 'repeat(3, 1fr)', gap:18}}>
+          <div className="search-results-grid" style={{display:'grid', gridTemplateColumns: showMap ? '1fr 1fr' : 'repeat(3, 1fr)', gap:18}}>
             {filtered.map(l=>(
               <ListingCard key={l.id} listing={l}
                 onOpen={()=>nav('detail', l.id)}
@@ -217,13 +224,11 @@ function SearchPage({nav, savedIds, onSave, onUnlock, initialSearchParams}) {
 
         {/* ─── Map ────────────────────────────────────── */}
         {showMap && (
-          <aside style={{position:'sticky', top:88, height:'calc(100vh - 100px)'}}>
+          <aside className="search-map-aside" style={{position:'sticky', top:88, height:'calc(100vh - 100px)'}}>
             <MapPanel listings={filtered}/>
           </aside>
         )}
       </div>
-
-      <Footer nav={nav}/>
     </div>
   );
 }

@@ -284,7 +284,7 @@ export function UrbifyApp({ initialPage = 'home' }) {
         {page==='home'      && <HomePage     {...pub}/>}
         {page==='search'    && <SearchPage   {...pub} initialSearchParams={searchParams}/>}
         {page==='rent'      && <SearchPage   {...pub} initialSearchParams={searchParams}/>}
-        {page==='detail'    && <DetailPage   {...pub} listing={listing}/>}
+        {page==='detail'    && <DetailPage   {...pub} listingId={listingId}/>}
         {page==='unlock'    && <UnlockPage   nav={nav} listing={listing}/>}
         {page==='auth'      && <AuthPage     nav={nav}/>}
         {page==='how'       && <HowPage      nav={nav}/>}

@@ -258,8 +258,6 @@ function ComparePage({nav, savedIds, onSave, onUnlock}) {
           </Modal>
         )}
       </section>
-
-      <Footer nav={nav}/>
     </div>
   );
 }

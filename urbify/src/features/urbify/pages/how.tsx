@@ -210,7 +210,6 @@ function HowPage({nav}) {
         </div>
       </section>
 
-      <Footer nav={nav}/>
     </div>
   );
 }

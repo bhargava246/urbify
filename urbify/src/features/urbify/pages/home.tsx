@@ -127,7 +127,7 @@ function HomePage({nav, savedIds, onSave, onUnlock}) {
   return (
     <div>
       {/* ─── HERO ─────────────────────────────────────────────────────── */}
-      <section style={{padding:'56px 28px 32px', maxWidth:1440, margin:'0 auto'}}>
+      <section className="hero-section" style={{padding:'56px 28px 32px', maxWidth:1440, margin:'0 auto'}}>
         <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:24}}>
           <span className="chip" style={{background:'transparent', border:'1px solid var(--border-strong)'}}>
             <span style={{width:6, height:6, borderRadius:'50%', background:'var(--success)', display:'inline-block'}}/>
@@ -219,7 +219,7 @@ function HomePage({nav, savedIds, onSave, onUnlock}) {
       </section>
 
       {/* ─── THE BIG IDEA ─────────────────────────────────────────────── */}
-      <section style={{padding:'72px 28px', background:'var(--surface-sunken)'}}>
+      <section className="section-big-idea" style={{padding:'72px 28px', background:'var(--surface-sunken)'}}>
         <div style={{maxWidth:1440, margin:'0 auto'}}>
           <div className="big-idea-grid" style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:80, alignItems:'center'}}>
             <div>
@@ -244,7 +244,7 @@ function HomePage({nav, savedIds, onSave, onUnlock}) {
       </section>
 
       {/* ─── FEATURED ─────────────────────────────────────────────────── */}
-      <section style={{padding:'72px 28px 24px', maxWidth:1440, margin:'0 auto'}}>
+      <section className="section-featured" style={{padding:'72px 28px 24px', maxWidth:1440, margin:'0 auto'}}>
         <div style={{display:'flex', justifyContent:'space-between', alignItems:'end', marginBottom:28}}>
           <div>
             <div style={{fontSize:13, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.08em', fontWeight:600}}>Fresh today</div>
@@ -282,7 +282,7 @@ function HomePage({nav, savedIds, onSave, onUnlock}) {
       </section>
 
       {/* ─── HOW IT WORKS  ─────────────────────────────────────────── */}
-      <section style={{padding:'88px 28px', maxWidth:1440, margin:'0 auto'}}>
+      <section className="section-how" style={{padding:'88px 28px', maxWidth:1440, margin:'0 auto'}}>
         <div style={{textAlign:'center', marginBottom:48}}>
           <div className="chip" style={{background:'transparent', border:'1px solid var(--border-strong)', marginBottom:16}}>For everyone</div>
           <h2 className="font-display" style={{fontSize:'clamp(36px, 5vw, 64px)', margin:0, fontWeight:800, letterSpacing:'-0.04em'}}>
@@ -319,7 +319,7 @@ function HomePage({nav, savedIds, onSave, onUnlock}) {
       </section>
 
       {/* ─── CTA  ───────────────────────────────────────────────── */}
-      <section style={{padding:'120px 28px'}}>
+      <section className="section-cta" style={{padding:'120px 28px'}}>
         <div style={{maxWidth:1100, margin:'0 auto', textAlign:'center'}}>
           <h2 className="font-display" style={{fontSize:'clamp(48px, 7vw, 96px)', lineHeight:.96, letterSpacing:'-0.045em', fontWeight:800, margin:0}}>
             Ready when<br/>you are.

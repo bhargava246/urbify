@@ -364,7 +364,6 @@ function LegalPage({nav, kind}) {
         </div>
       </section>
 
-      <Footer nav={nav}/>
     </div>
   );
 }

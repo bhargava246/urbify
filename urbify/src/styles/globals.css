@@ -260,6 +260,9 @@ button { font-family: inherit; }
 @keyframes shake { 0%,100%{ transform: translateX(0);} 25%{ transform: translateX(-3px);} 75%{ transform: translateX(3px);} }
 .shake { animation: shake .35s ease both; }
 
+/* Carousel progress bar */
+@keyframes carousel-progress { from { width: 0%; } to { width: 100%; } }
+
 /* =========================================================
    RESPONSIVE / MOBILE-FIRST
    ========================================================= */
@@ -465,6 +468,18 @@ button { font-family: inherit; }
 
   /* Home hero padding */
   .hero-section { padding: 40px 16px 32px !important; }
+
+  /* Home — other section paddings */
+  .section-big-idea { padding: 48px 16px !important; }
+  .section-featured  { padding: 40px 16px 16px !important; }
+  .section-how       { padding: 48px 16px !important; }
+  .section-cta       { padding: 64px 16px !important; }
+
+  /* Search — results grid single column */
+  .search-results-grid { grid-template-columns: 1fr !important; }
+
+  /* Detail page — price aside floats to top on mobile */
+  .detail-main-grid aside { order: -1; }
 
   /* Topbar — hide desktop nav links */
   .topbar nav > a { display: none; }

@@ -97,7 +97,6 @@ function AboutPage({nav}) {
         </div>
       </section>
 
-      <Footer nav={nav}/>
     </div>
   );
 }
@@ -187,7 +186,6 @@ function FaqPage({nav}) {
         </div>
       </section>
 
-      <Footer nav={nav}/>
     </div>
   );
 }
@@ -309,7 +307,6 @@ function ContactPage({nav}) {
         </div>
       </section>
 
-      <Footer nav={nav}/>
     </div>
   );
 }

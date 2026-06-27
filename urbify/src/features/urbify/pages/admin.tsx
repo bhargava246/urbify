@@ -43,27 +43,26 @@ const ADMIN_NAV = () => [
 // ─── Admin Dashboard ──────────────────────────────────────────────────────
 function AdminDashPage({nav}) {
   const adminUser = useAdminUser();
-  const [stats, setStats] = useState({ listings: 0, pending: 0, users: 0, revenue: 0 });
+  const [stats, setStats] = useState({ listings: 0, pending: 0, users: 0, revenue: 0, live: 0, rejected: 0, rented: 0 });
 
   useEffect(() => {
+    const t = (r) => r.value?.data?.total ?? r.value?.data?.data?.length ?? r.value?.total ?? 0;
     Promise.allSettled([
       authFetch('/api/v1/properties/admin/all?limit=1').then(r => r.ok ? r.json() : null),
       authFetch('/api/v1/properties/admin/all?status=PENDING_REVIEW&limit=1').then(r => r.ok ? r.json() : null),
       authFetch('/api/v1/users?limit=1').then(r => r.ok ? r.json() : null),
-    ]).then(([listings, pending, users]) => {
-      setStats({
-        listings: listings.value?.data?.total ?? listings.value?.total ?? 0,
-        pending:  pending.value?.data?.total  ?? pending.value?.total  ?? 0,
-        users:    users.value?.data?.total    ?? users.value?.total    ?? 0,
-        revenue: 0,
-      });
+      authFetch('/api/v1/properties/admin/all?status=ACTIVE&limit=1').then(r => r.ok ? r.json() : null),
+      authFetch('/api/v1/properties/admin/all?status=REJECTED&limit=1').then(r => r.ok ? r.json() : null),
+      authFetch('/api/v1/properties/admin/all?status=RENTED_SOLD&limit=1').then(r => r.ok ? r.json() : null),
+    ]).then(([listings, pending, users, live, rejected, rented]) => {
+      setStats({ listings: t(listings), pending: t(pending), users: t(users), revenue: 0, live: t(live), rejected: t(rejected), rented: t(rented) });
     });
   }, []);
 
   return (
     <PortalShell user={adminUser} navItems={ADMIN_NAV()} current="adminDash" onNav={(id)=>nav(id)}>
       <DashHeader title="Platform overview"
-        subtitle="Tue, 17 Nov 2026 · last 30 days"
+        subtitle={`${new Date().toLocaleDateString('en-IN', {weekday:'short', day:'numeric', month:'short', year:'numeric'})} · last 30 days`}
         actions={
           <>
             <select className="input select btn-sm" style={{height:34, fontSize:13}}><option>Last 30 days</option><option>This quarter</option></select>
@@ -71,14 +70,17 @@ function AdminDashPage({nav}) {
           </>
         }/>
 
-      {/* alerts strip */}
-      <div className="card" style={{padding:'14px 18px', display:'flex', alignItems:'center', gap:14, marginBottom:24, background:'#FEE2E2', border:0}}>
-        <div style={{width:36, height:36, borderRadius:'var(--r-sm)', background:'#FCA5A5', color:'#7F1D1D', display:'grid', placeItems:'center', fontSize:18}}>!</div>
-        <div style={{flex:1, fontSize:13, color:'#7F1D1D'}}>
-          <strong>3 payment disputes pending review.</strong> SLA breach in 4h 12m. <span style={{opacity:.7}}>· 2 listings flagged by AI moderation</span>
+      {/* alerts strip — only shown when there are real pending listings */}
+      {stats.pending > 0 && (
+        <div className="card" style={{padding:'14px 18px', display:'flex', alignItems:'center', gap:14, marginBottom:24, background:'#FEE2E2', border:0}}>
+          <div style={{width:36, height:36, borderRadius:'var(--r-sm)', background:'#FCA5A5', color:'#7F1D1D', display:'grid', placeItems:'center', fontSize:18}}>!</div>
+          <div style={{flex:1, fontSize:13, color:'#7F1D1D'}}>
+            <strong>{stats.pending} listing{stats.pending !== 1 ? 's' : ''} pending moderation review.</strong>
+            {' '}<span style={{opacity:.7}}>Review and approve or reject to keep the queue clear.</span>
+          </div>
+          <button className="btn btn-sm" style={{background:'#7F1D1D', color:'#fff', border:0}} onClick={()=>nav('adminMod')}>Review now →</button>
         </div>
-        <button className="btn btn-sm" style={{background:'#7F1D1D', color:'#fff', border:0}}>Review now →</button>
-      </div>
+      )}
 
       {/* primary KPIs */}
       <div style={{display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:14, marginBottom:24}}>
@@ -94,50 +96,30 @@ function AdminDashPage({nav}) {
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:14}}>
             <div>
               <div style={{fontSize:11, color:'var(--text-muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.08em'}}>Revenue · daily</div>
-              <div className="font-display" style={{fontSize:32, fontWeight:800, letterSpacing:'-0.03em', marginTop:6}}>₹48,21,400</div>
+              <div className="font-display" style={{fontSize:32, fontWeight:800, letterSpacing:'-0.03em', marginTop:6}}>₹—</div>
             </div>
-            <div style={{display:'flex', gap:14, fontSize:12}}>
-              <div style={{display:'flex', alignItems:'center', gap:6}}><span style={{width:8, height:8, background:'var(--brand-500)', borderRadius:99}}/> Net</div>
-              <div style={{display:'flex', alignItems:'center', gap:6}}><span style={{width:8, height:8, background:'var(--accent-500)', borderRadius:99}}/> GST</div>
-            </div>
+            <button className="btn btn-ghost btn-sm" onClick={()=>nav('adminRev')}>Full report →</button>
           </div>
-
-          <svg viewBox="0 0 600 200" style={{width:'100%', height:200}}>
-            <defs>
-              <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--brand-500)" stopOpacity="0.3"/>
-                <stop offset="100%" stopColor="var(--brand-500)" stopOpacity="0"/>
-              </linearGradient>
-            </defs>
-            <path d="M0 160 L 40 140 L 80 150 L 120 100 L 160 110 L 200 80 L 240 95 L 280 60 L 320 75 L 360 50 L 400 65 L 440 30 L 480 45 L 520 25 L 560 40 L 600 20 L 600 200 L 0 200 Z" fill="url(#grad)"/>
-            <path d="M0 160 L 40 140 L 80 150 L 120 100 L 160 110 L 200 80 L 240 95 L 280 60 L 320 75 L 360 50 L 400 65 L 440 30 L 480 45 L 520 25 L 560 40 L 600 20" fill="none" stroke="var(--brand-500)" strokeWidth="2.5"/>
-            {/* axis */}
-            <line x1="0" y1="180" x2="600" y2="180" stroke="var(--border)"/>
-          </svg>
-          <div style={{display:'flex', justifyContent:'space-between', marginTop:6, fontSize:10, color:'var(--text-faint)'}}>
-            <span>Oct 17</span><span>Oct 24</span><span>Oct 31</span><span>Nov 7</span><span>Nov 14</span><span>Today</span>
+          <div style={{height:200, display:'grid', placeItems:'center', background:'var(--surface-sunken)', borderRadius:'var(--r-md)', color:'var(--text-muted)', fontSize:13}}>
+            <div style={{textAlign:'center'}}>
+              <div style={{fontSize:24, marginBottom:8}}>📊</div>
+              <div>Revenue chart available in the <button className="btn btn-ghost btn-sm" style={{display:'inline',padding:'0 4px'}} onClick={()=>nav('adminRev')}>Revenue section</button></div>
+            </div>
           </div>
         </div>
 
         <div className="card" style={{padding:24}}>
-          <div style={{fontSize:11, color:'var(--text-muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.08em', marginBottom:14}}>Top cities by revenue</div>
-          {[
-            { city:"Bangalore", val:1820000, pct:38 },
-            { city:"Mumbai", val:1320000, pct:27 },
-            { city:"Pune", val:680000, pct:14 },
-            { city:"Hyderabad", val:540000, pct:11 },
-            { city:"Delhi NCR", val:480000, pct:10 },
-          ].map((c, i)=>(
-            <div key={c.city} style={{marginBottom:14}}>
-              <div style={{display:'flex', justifyContent:'space-between', fontSize:13, marginBottom:6}}>
-                <span style={{fontWeight:500}}>{c.city}</span>
-                <span style={{fontWeight:700, fontVariantNumeric:'tabular-nums'}}>₹{(c.val/100000).toFixed(1)}L</span>
-              </div>
-              <div style={{height:6, background:'var(--surface-sunken)', borderRadius:99, overflow:'hidden'}}>
-                <div style={{height:'100%', width:`${c.pct*2.6}%`, background: i===0?'var(--brand-500)':'var(--surface-sunken)', backgroundColor: `color-mix(in oklab, var(--brand-500) ${100-i*15}%, var(--surface-sunken))`, borderRadius:99}}/>
-              </div>
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:14}}>
+            <div style={{fontSize:11, color:'var(--text-muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.08em'}}>Top cities by revenue</div>
+            <button className="btn btn-ghost btn-sm" onClick={()=>nav('adminRev')}>See all →</button>
+          </div>
+          <div style={{display:'grid', placeItems:'center', height:180, color:'var(--text-muted)', fontSize:13, textAlign:'center'}}>
+            <div>
+              <div style={{fontSize:24, marginBottom:8}}>🏙️</div>
+              <div>City revenue breakdown in</div>
+              <button className="btn btn-ghost btn-sm" onClick={()=>nav('adminRev')} style={{marginTop:4}}>Revenue & analytics →</button>
             </div>
-          ))}
+          </div>
         </div>
       </div>
 
@@ -155,16 +137,16 @@ function AdminDashPage({nav}) {
               </svg>
               <div style={{position:'absolute', inset:0, display:'grid', placeItems:'center'}}>
                 <div style={{textAlign:'center'}}>
-                  <div className="font-display" style={{fontSize:24, fontWeight:800, letterSpacing:'-0.03em'}}>12.4k</div>
+                  <div className="font-display" style={{fontSize:24, fontWeight:800, letterSpacing:'-0.03em'}}>{stats.listings >= 1000 ? (stats.listings/1000).toFixed(1)+'k' : stats.listings || '—'}</div>
                   <div style={{fontSize:10, color:'var(--text-muted)'}}>total</div>
                 </div>
               </div>
             </div>
             <div style={{flex:1, display:'flex', flexDirection:'column', gap:8, fontSize:12}}>
-              <Legend color="var(--brand-500)" label="Live" value="8,420"/>
-              <Legend color="var(--accent-500)" label="Pending" value="2,180"/>
-              <Legend color="var(--text-faint)" label="Rented" value="1,202"/>
-              <Legend color="var(--surface-sunken)" label="Expired" value="600"/>
+              <Legend color="var(--brand-500)" label="Live" value={stats.live.toLocaleString('en-IN') || '—'}/>
+              <Legend color="var(--accent-500)" label="Pending" value={stats.pending.toLocaleString('en-IN') || '—'}/>
+              <Legend color="var(--text-faint)" label="Rented" value={stats.rented.toLocaleString('en-IN') || '—'}/>
+              <Legend color="var(--error)" label="Rejected" value={stats.rejected.toLocaleString('en-IN') || '—'}/>
             </div>
           </div>
         </div>
@@ -174,45 +156,42 @@ function AdminDashPage({nav}) {
           <div className="font-display" style={{fontSize:48, fontWeight:800, letterSpacing:'-0.04em', marginTop:8}}>{stats.pending}</div>
           <div style={{fontSize:12, color:'var(--text-muted)'}}>listings awaiting review</div>
           <div style={{display:'flex', gap:6, marginTop:14, fontSize:11}}>
-            <span className="chip chip-accent">2 flagged</span>
-            <span className="chip">SLA 1h 24m</span>
+            {stats.pending > 0 && <span className="chip chip-accent">{stats.pending} pending</span>}
           </div>
           <button className="btn btn-brand btn-sm" style={{width:'100%', marginTop:18}} onClick={()=>nav('adminMod')}>Open queue →</button>
         </div>
 
         <div className="card" style={{padding:22}}>
           <div style={{fontSize:11, color:'var(--text-muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.08em'}}>Refund rate</div>
-          <div className="font-display" style={{fontSize:48, fontWeight:800, letterSpacing:'-0.04em', marginTop:8}}>0.34%</div>
-          <div style={{fontSize:12, color:'var(--success)', fontWeight:600}}>↓ 0.12% vs last month</div>
+          <div className="font-display" style={{fontSize:48, fontWeight:800, letterSpacing:'-0.04em', marginTop:8}}>—</div>
+          <div style={{fontSize:12, color:'var(--text-muted)'}}>Payment analytics pending</div>
           <div style={{marginTop:18, padding:'10px 12px', background:'var(--surface-sunken)', borderRadius:8, fontSize:12, color:'var(--text-muted)'}}>
-            Most refunds: invalid address (52%)
+            Connect PhonePe webhook to see refund analytics.
           </div>
         </div>
       </div>
 
-      {/* recent activity */}
+      {/* moderation quick-link */}
       <div className="card" style={{padding:0, overflow:'hidden'}}>
-        <div style={{padding:'18px 22px', borderBottom:'1px solid var(--border)'}}>
-          <div className="font-display" style={{fontSize:18, fontWeight:700, letterSpacing:'-0.02em'}}>Real-time activity</div>
+        <div style={{padding:'18px 22px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+          <div className="font-display" style={{fontSize:18, fontWeight:700, letterSpacing:'-0.02em'}}>Moderation queue</div>
+          <button className="btn btn-ghost btn-sm" onClick={()=>nav('adminMod')}>Open queue →</button>
         </div>
-        {[
-          { e:"Listing approved", det:"URB-1042 · 2 BHK Koramangala by Vikram K.", who:"Maya · 2 min ago", tone:"success" },
-          { e:"Refund processed", det:"TXN-89102 · ₹6,250 → wallet (invalid address)", who:"Auto · 14 min ago", tone:"warn" },
-          { e:"New broker verified", det:"Aditi Joshi · RERA MH-4521", who:"Maya · 28 min ago", tone:"info" },
-          { e:"Listing flagged", det:"URB-1031 · duplicate photos detected", who:"AI · 42 min ago", tone:"danger" },
-          { e:"Listing rejected", det:"URB-1009 · low-quality photos, asked to resubmit", who:"Karan · 1 h ago", tone:"danger" },
-        ].map((a, i)=>(
-          <div key={i} style={{padding:'14px 22px', borderTop: i===0?0:'1px solid var(--border)', display:'flex', alignItems:'center', gap:14}}>
-            <div style={{width:8, height:8, borderRadius:99, background:
-              a.tone === 'success' ? 'var(--success)' :
-              a.tone === 'warn' ? 'var(--warning)' :
-              a.tone === 'danger' ? 'var(--error)' : 'var(--info)'}}/>
-            <div style={{flex:1, fontSize:13}}>
-              <span style={{fontWeight:600}}>{a.e}</span> · <span style={{color:'var(--text-muted)'}}>{a.det}</span>
-            </div>
-            <div style={{fontSize:11, color:'var(--text-faint)'}}>{a.who}</div>
+        {stats.pending === 0 ? (
+          <div style={{padding:'40px 24px', textAlign:'center', color:'var(--text-muted)', fontSize:13}}>
+            <div style={{fontSize:32, marginBottom:8}}>✓</div>
+            <div style={{fontWeight:600}}>Queue is clear — nothing pending review.</div>
           </div>
-        ))}
+        ) : (
+          <div style={{padding:'24px 22px', display:'flex', alignItems:'center', gap:20}}>
+            <div className="font-display" style={{fontSize:56, fontWeight:800, letterSpacing:'-0.04em', color:'var(--warning)'}}>{stats.pending}</div>
+            <div>
+              <div style={{fontWeight:600, fontSize:15}}>listing{stats.pending !== 1 ? 's' : ''} awaiting review</div>
+              <div style={{fontSize:13, color:'var(--text-muted)', marginTop:4}}>Review and approve or reject to keep owners informed.</div>
+              <button className="btn btn-brand btn-sm" style={{marginTop:12}} onClick={()=>nav('adminMod')}>Go to moderation →</button>
+            </div>
+          </div>
+        )}
       </div>
     </PortalShell>
   );
@@ -247,6 +226,8 @@ function AdminModPage({nav}) {
   const [actionMsg, setActionMsg] = useState('');
   const [showChangesModal, setShowChangesModal] = useState(false);
   const [changesNote, setChangesNote] = useState('');
+  const [activePhotoIdx, setActivePhotoIdx] = useState(0);
+  const [revealAddr, setRevealAddr] = useState(false);
 
   const toast = (msg, isError=false) => {
     setActionMsg((isError ? '✕ ' : '✓ ') + msg);
@@ -284,6 +265,7 @@ function AdminModPage({nav}) {
   };
 
   useEffect(() => { loadQueue(); }, []);
+  useEffect(() => { setActivePhotoIdx(0); setRevealAddr(false); }, [activeIdx]);
 
   const active = queue[activeIdx];
 
@@ -391,11 +373,29 @@ function AdminModPage({nav}) {
 
           {/* gallery */}
           <div style={{padding:24}}>
-            <div style={{display:'grid', gridTemplateColumns:'1.6fr 1fr 1fr', gap:8, height:320, borderRadius:'var(--r-md)', overflow:'hidden'}}>
-              <Img src={active.photos[0]}/>
-              <Img src={active.photos[1]}/>
-              <Img src={active.photos[2]}/>
+            {/* Main photo */}
+            <div style={{height:320, borderRadius:'var(--r-md)', overflow:'hidden', background:'var(--surface-sunken)'}}>
+              {active.photos.length > 0
+                ? <Img src={active.photos[activePhotoIdx] || active.photos[0]} style={{width:'100%', height:'100%'}}/>
+                : <div style={{height:'100%', display:'grid', placeItems:'center', color:'var(--text-faint)', fontSize:13}}>No photos uploaded</div>
+              }
             </div>
+            {/* Thumbnail strip — all photos */}
+            {active.photos.length > 1 && (
+              <div style={{display:'flex', gap:8, marginTop:8, overflowX:'auto', paddingBottom:4}}>
+                {active.photos.map((p, i) => (
+                  <div key={i} onClick={() => setActivePhotoIdx(i)} style={{
+                    width:64, height:52, borderRadius:'var(--r-sm)', overflow:'hidden', flexShrink:0,
+                    cursor:'pointer', border:'2px solid', borderColor: activePhotoIdx===i ? 'var(--brand-500)' : 'transparent',
+                  }}>
+                    <img src={p} alt="" style={{width:'100%', height:'100%', objectFit:'cover'}}/>
+                  </div>
+                ))}
+                <div style={{fontSize:11, color:'var(--text-muted)', alignSelf:'center', flexShrink:0, marginLeft:4}}>
+                  {active.photos.length} photo{active.photos.length !== 1 ? 's' : ''}
+                </div>
+              </div>
+            )}
 
             {/* flags */}
             {active.flags.length > 0 && (
@@ -416,22 +416,70 @@ function AdminModPage({nav}) {
               </div>
             )}
 
-            {/* property details */}
-            <div style={{marginTop:20, display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:14}}>
-              <Spec label="Carpet area" value={`${active.area.toLocaleString("en-IN")} sq ft`}/>
-              <Spec label="Floor" value={`${active.floor} of ${active.total}`}/>
-              <Spec label="Furnishing" value={active.furnishing}/>
-              <Spec label="Rent" value={`₹${active.rentK}k`}/>
+            {/* property details — full */}
+            <div style={{marginTop:20, display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:10}}>
+              <Spec label="BHK" value={active.bhk ? `${active.bhk} BHK` : '—'}/>
+              <Spec label="Carpet area" value={active.area ? `${active.area.toLocaleString('en-IN')} sq ft` : '—'}/>
+              <Spec label="Floor" value={(active.floor || active.total) ? `${active.floor} of ${active.total}` : '—'}/>
+              <Spec label="Facing" value={active.facing || '—'}/>
+              <Spec label="Furnishing" value={active.furnishing || '—'}/>
+              <Spec label="Age" value={active.age || '—'}/>
+              <Spec label="Available" value={active.available || '—'}/>
+              <Spec label="Listing type" value={active._api?.listingType?.replace(/_/g,' ') || '—'}/>
+              <Spec label="Monthly rent" value={active.rentK ? `₹${active.rentK}k` : '—'}/>
+              <Spec label="Security deposit" value={active.deposit ? `₹${active.deposit}k` : '—'}/>
+              <Spec label="Maintenance" value={active._api?.maintenanceCharge ? `₹${active._api.maintenanceCharge.toLocaleString('en-IN')}` : '—'}/>
+              <Spec label="Negotiable" value={active._api?.isNegotiable ? 'Yes' : 'No'}/>
+              <Spec label="City" value={active.city || '—'}/>
+              <Spec label="Locality" value={active.locality || '—'}/>
+              <Spec label="State" value={active.state || '—'}/>
+              <Spec label="Pincode" value={active._api?.pincode || '—'}/>
+            </div>
+
+            {/* amenities */}
+            {active.amenities?.length > 0 && (
+              <div style={{marginTop:16}}>
+                <div style={{fontSize:11, color:'var(--text-muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.08em', marginBottom:8}}>Amenities</div>
+                <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+                  {active.amenities.map((a, i) => (
+                    <span key={i} className="chip" style={{fontSize:11}}>{typeof a === 'string' ? a : a.name}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* description */}
+            {active.description && (
+              <div style={{marginTop:16, padding:'14px 18px', background:'var(--surface-sunken)', borderRadius:'var(--r-md)'}}>
+                <div style={{fontSize:11, color:'var(--text-muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.08em', marginBottom:8}}>Description</div>
+                <p style={{fontSize:13, lineHeight:1.7, margin:0, color:'var(--text)', whiteSpace:'pre-wrap'}}>{active.description}</p>
+              </div>
+            )}
+
+            {/* listed by */}
+            <div style={{marginTop:16, padding:'12px 16px', background:'var(--surface-sunken)', borderRadius:'var(--r-md)', display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:13}}>
+              <div>
+                <span style={{color:'var(--text-muted)'}}>Listed by: </span>
+                <strong>{active.listedBy || '—'}</strong>
+              </div>
+              <div>
+                <span style={{color:'var(--text-muted)'}}>Submitted: </span>
+                <strong>{active.submitted}</strong>
+              </div>
+              <div>
+                <span style={{color:'var(--text-muted)'}}>Views: </span>
+                <strong>{active.pop ?? 0}</strong>
+              </div>
             </div>
 
             {/* address (shown blurred) */}
-            <div style={{marginTop:24, padding:'16px 20px', background:'var(--surface-sunken)', borderRadius:'var(--r-md)'}}>
+            <div style={{marginTop:16, padding:'16px 20px', background:'var(--surface-sunken)', borderRadius:'var(--r-md)'}}>
               <div style={{fontSize:11, color:'var(--text-muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.08em', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                 <span><Icon.lock/> Full address (admin only)</span>
-                <button className="btn btn-ghost btn-sm">Reveal for review</button>
+                <button className="btn btn-ghost btn-sm" onClick={()=>setRevealAddr(r=>!r)}>{revealAddr ? 'Hide address' : 'Reveal for review'}</button>
               </div>
-              <div className="font-mono" style={{marginTop:8, filter:'blur(6px)', userSelect:'none', fontSize:14, fontWeight:600}}>
-                #{active.id.slice(-3)}, 4th Block, 80 Feet Road, {active.locality}, {active.city} 560034
+              <div className="font-mono" style={{marginTop:8, filter:revealAddr?'none':'blur(6px)', userSelect:revealAddr?'auto':'none', fontSize:14, fontWeight:600}}>
+                {active.locality}, {active.city} {active._api?.pincode || ''}
               </div>
             </div>
           </div>
@@ -471,6 +519,9 @@ function AdminModPage({nav}) {
 function AdminUsersPage({nav}) {
   const adminUser = useAdminUser();
   const [filter, setFilter] = useState("all");
+  const [userSearch, setUserSearch] = useState('');
+  const [userStatusFilter, setUserStatusFilter] = useState('all');
+  const [userPage, setUserPage] = useState(1);
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
@@ -498,10 +549,12 @@ function AdminUsersPage({nav}) {
     } catch { toast('Network error', true); }
   };
 
-  useEffect(() => {
+  const USER_PER_PAGE = 20;
+
+  const loadUsers = useCallback((pg = 1) => {
     setLoadingUsers(true);
     const roleParam = filter !== 'all' ? `&role=${filter.toUpperCase()}` : '';
-    authFetch(`/api/v1/users?limit=50&page=1${roleParam}`)
+    authFetch(`/api/v1/users?limit=${USER_PER_PAGE}&page=${pg}${roleParam}`)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         // Double-wrapped: response interceptor {success,data,timestamp} around
@@ -525,12 +578,24 @@ function AdminUsersPage({nav}) {
             id: u.id,
           };
         }));
+        setUserPage(pg);
       })
       .catch(() => {})
       .finally(() => setLoadingUsers(false));
   }, [filter]);
 
-  const filtered = users;
+  useEffect(() => { loadUsers(1); }, [filter]);
+
+  const filtered = useMemo(() => {
+    const q = userSearch.toLowerCase().trim();
+    return users.filter(u => {
+      if (userStatusFilter !== 'all' && u.status !== userStatusFilter) return false;
+      if (!q) return true;
+      return u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.rera?.toLowerCase().includes(q);
+    });
+  }, [users, userSearch, userStatusFilter]);
+
+  const userTotalPages = Math.max(1, Math.ceil(totalCount / USER_PER_PAGE));
 
   return (
     <PortalShell user={adminUser} navItems={ADMIN_NAV()} current="adminUsers" onNav={(id)=>nav(id)}>
@@ -569,9 +634,15 @@ function AdminUsersPage({nav}) {
         <div style={{flex:1}}/>
         <div style={{display:'flex', alignItems:'center', gap:8, padding:'0 12px', background:'var(--surface-sunken)', borderRadius:'var(--r-sm)', height:36, width:280}}>
           <Icon.search/>
-          <input className="input" placeholder="Search name, phone, RERA…" style={{border:0, background:'transparent', padding:0, height:'auto', flex:1, fontSize:13}}/>
+          <input className="input" placeholder="Search name, email, RERA…" value={userSearch} onChange={e=>setUserSearch(e.target.value)}
+            style={{border:0, background:'transparent', padding:0, height:'auto', flex:1, fontSize:13}}/>
         </div>
-        <select className="input select btn-sm" style={{height:36, fontSize:12}}><option>Any status</option><option>Verified</option><option>Pending</option><option>Flagged</option></select>
+        <select className="input select btn-sm" style={{height:36, fontSize:12}} value={userStatusFilter} onChange={e=>setUserStatusFilter(e.target.value)}>
+          <option value="all">Any status</option>
+          <option value="verified">Verified</option>
+          <option value="pending">Pending</option>
+          <option value="flagged">Flagged</option>
+        </select>
       </div>
 
       {/* table */}
@@ -640,10 +711,10 @@ function AdminUsersPage({nav}) {
         </table>
 
         <div style={{padding:'14px 22px', borderTop:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:12, color:'var(--text-muted)'}}>
-          <span>{loadingUsers ? 'Loading…' : `Showing 1–${filtered.length} of ${totalCount}`}</span>
+          <span>{loadingUsers ? 'Loading…' : `Page ${userPage} of ${userTotalPages} · ${totalCount} total`}</span>
           <div style={{display:'flex', gap:6}}>
-            <button className="btn btn-outline btn-sm">← Prev</button>
-            <button className="btn btn-outline btn-sm">Next →</button>
+            <button className="btn btn-outline btn-sm" disabled={userPage <= 1 || loadingUsers} onClick={()=>loadUsers(userPage - 1)}>← Prev</button>
+            <button className="btn btn-outline btn-sm" disabled={userPage >= userTotalPages || loadingUsers} onClick={()=>loadUsers(userPage + 1)}>Next →</button>
           </div>
         </div>
       </div>
@@ -662,23 +733,26 @@ function AdminRevenuePage({nav}) {
     const now = new Date();
     const from = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate()).toISOString();
     const to = now.toISOString();
-    authFetch(`/api/v1/payments/revenue?from=${from}&to=${to}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(raw => {
-        // API returns: { totalUnlocks, totalRevenue, totalGst, cityBreakdown }
-        const d = raw?.data ?? raw;
-        if (d) {
-          setRevData({
-            netRevenue:    d.totalRevenue  ?? 0,
-            gstAmount:     d.totalGst      ?? 0,
-            grossRevenue:  (d.totalRevenue ?? 0) + (d.totalGst ?? 0),
-            totalUnlocks:  d.totalUnlocks  ?? 0,
-            cityBreakdown: d.cityBreakdown ?? {},
-          });
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoadingRev(false));
+    Promise.allSettled([
+      authFetch(`/api/v1/payments/revenue?from=${from}&to=${to}`).then(r => r.ok ? r.json() : null),
+      authFetch('/api/v1/payments?limit=20').then(r => r.ok ? r.json() : null),
+    ]).then(([revRes, txnRes]) => {
+      // API returns: { totalUnlocks, totalRevenue, totalGst, cityBreakdown }
+      const d = revRes.value?.data ?? revRes.value;
+      if (d) {
+        setRevData({
+          netRevenue:    d.totalRevenue  ?? 0,
+          gstAmount:     d.totalGst      ?? 0,
+          grossRevenue:  (d.totalRevenue ?? 0) + (d.totalGst ?? 0),
+          totalUnlocks:  d.totalUnlocks  ?? 0,
+          cityBreakdown: d.cityBreakdown ?? {},
+        });
+      }
+      const txnArr = txnRes.value?.data?.data ?? txnRes.value?.data ?? [];
+      if (Array.isArray(txnArr)) setTxns(txnArr);
+    })
+    .catch(() => {})
+    .finally(() => setLoadingRev(false));
   }, []);
 
   const fmt = (n) => (n || 0).toLocaleString('en-IN');
@@ -706,57 +780,48 @@ function AdminRevenuePage({nav}) {
       <div className="card" style={{padding:28, marginBottom:18}}>
         <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:14}}>
           <div>
-            <div style={{fontSize:13, color:'var(--text-muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.08em'}}>Daily gross revenue</div>
+            <div style={{fontSize:13, color:'var(--text-muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.08em'}}>Gross revenue (30 days)</div>
             <div style={{display:'flex', gap:18, alignItems:'baseline', marginTop:6}}>
-              <div className="font-display" style={{fontSize:36, fontWeight:800, letterSpacing:'-0.035em'}}>₹48,21,400</div>
-              <div style={{color:'var(--success)', fontSize:13, fontWeight:600}}>↑ ₹7.6L vs prev period</div>
+              <div className="font-display" style={{fontSize:36, fontWeight:800, letterSpacing:'-0.035em'}}>{loadingRev ? '…' : `₹${fmt(revData?.grossRevenue)}`}</div>
             </div>
           </div>
-          <div style={{display:'flex', gap:8}}>
-            <button className="btn btn-outline btn-sm">Daily</button>
-            <button className="btn btn-ghost btn-sm">Weekly</button>
-            <button className="btn btn-ghost btn-sm">Monthly</button>
-          </div>
         </div>
-
-        <svg viewBox="0 0 1000 280" style={{width:'100%', height:280}}>
-          <defs>
-            <linearGradient id="rev-grad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--brand-500)" stopOpacity="0.25"/>
-              <stop offset="100%" stopColor="var(--brand-500)" stopOpacity="0"/>
-            </linearGradient>
-          </defs>
-          {/* gridlines */}
-          {[0, 56, 112, 168, 224].map((y, i)=>(
-            <g key={i}>
-              <line x1="50" y1={y+20} x2="1000" y2={y+20} stroke="var(--border)" strokeDasharray="4 4"/>
-              <text x="40" y={y+24} fontSize="10" fill="var(--text-faint)" textAnchor="end">
-                {["₹2L","₹1.5L","₹1L","₹50k","0"][i]}
-              </text>
-            </g>
-          ))}
-          {/* bars */}
-          {Array.from({length:30}).map((_, i)=>{
-            const v = 60 + Math.sin(i*0.5)*30 + Math.random()*40 + i*4;
-            const h = v * 0.7;
-            const x = 60 + i*31;
-            const today = i === 29;
-            return (
-              <rect key={i} x={x} y={244 - h} width={20} height={h} rx={3}
-                fill={today ? "var(--brand-500)" : `color-mix(in oklab, var(--brand-500) ${30 + i*1.5}%, var(--surface-sunken))`}/>
-            );
-          })}
-          {/* line overlay */}
-          <path d={
-            "M 60 200 " + Array.from({length:30}).map((_, i)=>{
-              const v = 70 + Math.sin(i*0.3)*20 + i*3.5;
-              return `L ${72 + i*31} ${244 - v*0.7}`;
-            }).join(' ')
-          } fill="none" stroke="var(--accent-500)" strokeWidth="2.5" strokeLinecap="round"/>
-        </svg>
-
+        {/* Stable illustrative chart — daily breakdown requires a /payments/daily endpoint */}
+        {(() => {
+          const seed = [62,71,58,85,79,92,68,75,88,64,96,83,70,91,77,89,73,95,80,67,84,72,98,87,65,93,76,82,69,100];
+          return (
+            <svg viewBox="0 0 1000 280" style={{width:'100%', height:280}}>
+              <defs>
+                <linearGradient id="rev-grad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--brand-500)" stopOpacity="0.25"/>
+                  <stop offset="100%" stopColor="var(--brand-500)" stopOpacity="0"/>
+                </linearGradient>
+              </defs>
+              {[0, 56, 112, 168, 224].map((y, i)=>(
+                <g key={i}>
+                  <line x1="50" y1={y+20} x2="1000" y2={y+20} stroke="var(--border)" strokeDasharray="4 4"/>
+                  <text x="40" y={y+24} fontSize="10" fill="var(--text-faint)" textAnchor="end">
+                    {["₹2L","₹1.5L","₹1L","₹50k","0"][i]}
+                  </text>
+                </g>
+              ))}
+              {seed.map((v, i)=>{
+                const h = v * 1.5;
+                const x = 60 + i*31;
+                const today = i === 29;
+                return (
+                  <rect key={i} x={x} y={244 - h} width={20} height={h} rx={3}
+                    fill={today ? "var(--brand-500)" : `color-mix(in oklab, var(--brand-500) ${30 + i*1.5}%, var(--surface-sunken))`}/>
+                );
+              })}
+            </svg>
+          );
+        })()}
         <div style={{display:'flex', justifyContent:'space-between', marginTop:8, fontSize:10, color:'var(--text-faint)'}}>
-          <span>Oct 17</span><span>Oct 24</span><span>Oct 31</span><span>Nov 7</span><span>Nov 14</span><span>Today</span>
+          {Array.from({length:6}).map((_, i) => {
+            const d = new Date(); d.setDate(d.getDate() - (30 - i*6));
+            return <span key={i}>{i===5 ? 'Today' : d.toLocaleDateString('en-IN', {day:'numeric', month:'short'})}</span>;
+          })}
         </div>
       </div>
 
@@ -1730,16 +1795,17 @@ function PropertyFormModal({initial, onSave, onClose}) {
 }
 
 function PropertyViewModal({prop, onClose, onEdit}) {
-  const photos = prop.photos?.length ? prop.photos : [prop.photo];
-  const [active, setActive] = useState(0);
+  const photos = prop.photos?.filter(Boolean).length ? prop.photos.filter(Boolean) : (prop.photo ? [prop.photo] : []);
+  const [activePhoto, setActivePhoto] = useState(0);
+  const fmt = (n) => (n || 0).toLocaleString('en-IN');
   return (
     <div style={{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,.6)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}}
       onClick={e=>{if(e.target===e.currentTarget) onClose();}}>
-      <div style={{background:'var(--surface)',borderRadius:'var(--r-lg)',width:'100%',maxWidth:720,maxHeight:'92vh',overflow:'hidden',display:'flex',flexDirection:'column'}}>
+      <div style={{background:'var(--surface)',borderRadius:'var(--r-lg)',width:'100%',maxWidth:760,maxHeight:'92vh',overflow:'hidden',display:'flex',flexDirection:'column'}}>
         <div style={{padding:'16px 22px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
           <div>
-            <div style={{fontSize:18,fontWeight:800,letterSpacing:'-0.02em'}}>{prop.bhk} BHK in {prop.locality}</div>
-            <div style={{fontSize:12,color:'var(--text-muted)',fontFamily:'var(--f-mono)'}}>{prop.id}</div>
+            <div style={{fontSize:18,fontWeight:800,letterSpacing:'-0.02em'}}>{prop.bhk ? `${prop.bhk} BHK · ` : ''}{prop.locality}, {prop.city}</div>
+            <div style={{fontSize:12,color:'var(--text-muted)',fontFamily:'var(--f-mono)',marginTop:2}}>{prop.id}</div>
           </div>
           <div style={{display:'flex',gap:8}}>
             <button className="btn btn-outline btn-sm" onClick={onEdit}>Edit</button>
@@ -1747,34 +1813,77 @@ function PropertyViewModal({prop, onClose, onEdit}) {
           </div>
         </div>
         <div style={{flex:1,overflowY:'auto',padding:20}}>
-          <div style={{height:240,borderRadius:'var(--r-md)',overflow:'hidden',marginBottom:8}}>
-            <Img src={photos[active]||photos[0]} style={{width:'100%',height:'100%'}}/>
-          </div>
-          {photos.length>1 && (
-            <div style={{display:'flex',gap:8,marginBottom:16,overflowX:'auto'}}>
-              {photos.map((p,i)=>(
-                <div key={i} onClick={()=>setActive(i)} style={{width:56,height:44,borderRadius:'var(--r-sm)',overflow:'hidden',flexShrink:0,cursor:'pointer',border:'2px solid',borderColor:active===i?'var(--brand-500)':'transparent'}}>
-                  <img src={p} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                </div>
-              ))}
-            </div>
+          {/* Main photo */}
+          {photos.length > 0 ? (
+            <>
+              <div style={{height:260,borderRadius:'var(--r-md)',overflow:'hidden',marginBottom:8,background:'var(--surface-sunken)'}}>
+                <Img src={photos[activePhoto]} style={{width:'100%',height:'100%'}}/>
+              </div>
+              {/* All photo thumbnails */}
+              <div style={{display:'flex',gap:8,marginBottom:16,overflowX:'auto',paddingBottom:4}}>
+                {photos.map((p,i)=>(
+                  <div key={i} onClick={()=>setActivePhoto(i)} style={{width:64,height:52,borderRadius:'var(--r-sm)',overflow:'hidden',flexShrink:0,cursor:'pointer',border:'2px solid',borderColor:activePhoto===i?'var(--brand-500)':'transparent'}}>
+                    <img src={p} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                  </div>
+                ))}
+                <div style={{fontSize:11,color:'var(--text-muted)',alignSelf:'center',flexShrink:0,marginLeft:4}}>{photos.length} photo{photos.length!==1?'s':''}</div>
+              </div>
+            </>
+          ) : (
+            <div style={{height:120,borderRadius:'var(--r-md)',background:'var(--surface-sunken)',display:'grid',placeItems:'center',color:'var(--text-faint)',fontSize:13,marginBottom:16}}>No photos uploaded</div>
           )}
-          <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:10,marginBottom:16}}>
+
+          {/* Full details grid */}
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:16}}>
             {[
-              {l:'Rent',v:`₹${prop.rentK||0}k/mo`},{l:'Area',v:`${(prop.area||0).toLocaleString('en-IN')} sqft`},
-              {l:'Floor',v:`${prop.floor||'—'}/${prop.total||'—'}`},{l:'Furnishing',v:prop.furnishing||'—'},
-              {l:'City',v:prop.city},{l:'Type',v:prop.propertyType||'Apartment'},
+              {l:'BHK',           v: prop.bhk ? `${prop.bhk} BHK` : '—'},
+              {l:'Rent',          v: prop.rentK ? `₹${prop.rentK}k/mo` : '—'},
+              {l:'Security dep.', v: prop.deposit ? `₹${prop.deposit}k` : '—'},
+              {l:'Area',          v: prop.area ? `${fmt(prop.area)} sqft` : '—'},
+              {l:'Floor',         v: (prop.floor||prop.total) ? `${prop.floor||'—'}/${prop.total||'—'}` : '—'},
+              {l:'Facing',        v: prop.facing || '—'},
+              {l:'Furnishing',    v: prop.furnishing || '—'},
+              {l:'Age',           v: prop.age || '—'},
+              {l:'Available',     v: prop.available || '—'},
+              {l:'City',          v: prop.city || '—'},
+              {l:'Locality',      v: prop.locality || '—'},
+              {l:'Listing type',  v: prop._api?.listingType?.replace(/_/g,' ') || prop.propertyType || '—'},
             ].map(s=>(
               <div key={s.l} style={{padding:'10px 12px',borderRadius:'var(--r-sm)',background:'var(--surface-sunken)'}}>
                 <div style={{fontSize:10,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'.08em',fontWeight:600}}>{s.l}</div>
-                <div style={{fontSize:14,fontWeight:700,marginTop:3}}>{s.v}</div>
+                <div style={{fontSize:13,fontWeight:700,marginTop:3}}>{s.v}</div>
               </div>
             ))}
           </div>
-          <div style={{padding:'12px 16px',borderRadius:'var(--r-md)',border:'1px solid var(--border)',fontSize:13}}>
-            <span style={{color:'var(--text-muted)'}}>Status: </span>
-            <strong style={{color:prop.status==='live'?'var(--success)':prop.status==='pending'?'var(--warning)':'var(--error)',textTransform:'capitalize'}}>{prop.status}</strong>
-            <span style={{color:'var(--text-muted)',marginLeft:16}}>Added by: </span><strong>{prop.addedBy||'Admin'}</strong>
+
+          {/* Amenities */}
+          {prop.amenities?.length > 0 && (
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:11,color:'var(--text-muted)',fontWeight:600,textTransform:'uppercase',letterSpacing:'.08em',marginBottom:8}}>Amenities</div>
+              <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+                {prop.amenities.map((a,i)=>(
+                  <span key={i} className="chip" style={{fontSize:11}}>{typeof a==='string'?a:a.name}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Description */}
+          {prop.description && (
+            <div style={{marginBottom:14,padding:'12px 16px',borderRadius:'var(--r-md)',background:'var(--surface-sunken)'}}>
+              <div style={{fontSize:11,color:'var(--text-muted)',fontWeight:600,textTransform:'uppercase',letterSpacing:'.08em',marginBottom:6}}>Description</div>
+              <p style={{fontSize:13,lineHeight:1.7,margin:0,color:'var(--text)',whiteSpace:'pre-wrap'}}>{prop.description}</p>
+            </div>
+          )}
+
+          {/* Status + meta */}
+          <div style={{padding:'12px 16px',borderRadius:'var(--r-md)',border:'1px solid var(--border)',fontSize:13,display:'flex',flexWrap:'wrap',gap:16}}>
+            <div><span style={{color:'var(--text-muted)'}}>Status: </span>
+              <strong style={{color:prop.status==='live'?'var(--success)':prop.status==='pending'?'var(--warning)':'var(--error)',textTransform:'capitalize'}}>{prop.status}</strong>
+            </div>
+            <div><span style={{color:'var(--text-muted)'}}>Listed by: </span><strong>{prop.listedBy||prop.addedBy||'—'}</strong></div>
+            <div><span style={{color:'var(--text-muted)'}}>Added: </span><strong>{prop.addedOn||'—'}</strong></div>
+            <div><span style={{color:'var(--text-muted)'}}>Views: </span><strong>{prop.pop??0}</strong></div>
           </div>
         </div>
       </div>

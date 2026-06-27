@@ -447,7 +447,7 @@ export class PropertiesService {
         take,
         orderBy: { createdAt: 'desc' },
         include: {
-          photos: { where: { isPrimary: true }, take: 1 },
+          photos: { orderBy: { order: 'asc' as const } },
           owner: {
             select: { phone: true, role: true },
           },

@@ -78,6 +78,20 @@ export function OlaMap({
 
       mapRef.current = map;
 
+      // Suppress known OlaMaps style-bundle issues (missing source layer / sprite)
+      map.on("error", (e: any) => {
+        const msg: string = e?.error?.message ?? "";
+        if (msg.includes("does not exist on source") || msg.includes("3d_model")) return;
+        console.error("[OlaMap]", msg || e);
+      });
+
+      // Provide a 1×1 transparent fallback for any missing sprite image (e.g. "ola-mbo")
+      map.on("styleimagemissing", (e: any) => {
+        if (map.hasImage(e.id)) return;
+        const blank = new ImageData(new Uint8ClampedArray(4), 1, 1);
+        map.addImage(e.id, blank);
+      });
+
       // ── Draggable pin ────────────────────────────────────────────────────
       if (draggablePin) {
         const pin = olaMaps

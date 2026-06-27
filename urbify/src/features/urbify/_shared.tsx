@@ -162,9 +162,6 @@ function normalizeApiListing(l) {
   const feeGST = Math.round(fee * 1.18);
   const photos = (l.photos || []).map(p => p.s3Url || p).filter(Boolean);
   const photo = photos[0] || PHOTOS[0];
-  const allPhotos = photos.length >= 5
-    ? photos
-    : [...photos, ...INTERIORS.slice(0, Math.max(0, 5 - photos.length))];
 
   const secDep = l.securityDeposit || rentOrPrice * 2;
   const deposit = Math.round(secDep / 1000);
@@ -173,6 +170,7 @@ function normalizeApiListing(l) {
     id: l.id,
     bhk: l.bhk || 0,
     title: l.title || `${l.bhk || ''} BHK in ${l.locality}`,
+    description: l.description || '',
     locality: l.locality,
     city: l.city,
     state: l.state || '',
@@ -186,7 +184,7 @@ function normalizeApiListing(l) {
     age: ageLabel(l.propertyAge),
     available: l.availableFrom ? new Date(l.availableFrom).toLocaleDateString('en-IN', { day:'numeric', month:'short' }) : 'Immediate',
     photo,
-    photos: allPhotos,
+    photos,
     isBroker: l.isBrokerListing,
     listedBy: l.isBrokerListing
       ? `Verified Broker${l.owner?.brokerProfile?.reraId ? ' · RERA ' + l.owner.brokerProfile.reraId : ''}`

@@ -14,7 +14,7 @@ import { authFetch } from '@/lib/authFetch';
 
 function UnlockPage({nav, listing}) {
   const [step, setStep] = useState(1);
-  const [method, setMethod] = useState("upi");
+  const [method, setMethod] = useState("cod");
   const [processing, setProcessing] = useState(false);
   const [payError, setPayError] = useState("");
   const fmt = (n) => n.toLocaleString("en-IN");
@@ -27,27 +27,14 @@ function UnlockPage({nav, listing}) {
     setProcessing(true);
     try {
       if (!localStorage.getItem('urb_access')) { nav('auth'); return; }
-
-      // 1. Create PhonePe order — backend returns a redirectUrl
-      const listingApiId = listing._api?.id || listing.id;
-      const orderRes = await authFetch('/api/v1/payments/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ listingId: listingApiId }),
-      });
-      const orderRaw = await orderRes.json();
-      const orderData = orderRaw?.data ?? orderRaw;
-      if (!orderRes.ok) throw new Error(orderRaw.message || orderData.message || 'Could not create payment order');
-
-      // 2. Redirect to PhonePe payment page
-      // After payment, PhonePe redirects back to /payment/callback?txnId=<merchantTransactionId>
-      if (!orderData.redirectUrl) throw new Error('Invalid payment response from server');
-      window.location.href = orderData.redirectUrl;
-
-      // Note: execution stops here — the callback page handles verification
+      // Cash on delivery — confirmed, advance to success screen
+      // Payment will be collected in person when the owner is contacted
+      await new Promise(r => setTimeout(r, 800)); // brief processing feel
+      setStep(3);
     } catch (err) {
+      setPayError(err.message || 'Something went wrong. Please try again.');
+    } finally {
       setProcessing(false);
-      setPayError(err.message || 'Payment failed. Please try again.');
     }
   };
 
@@ -87,13 +74,11 @@ function UnlockPage({nav, listing}) {
                 <div style={{display:'flex', gap:10, marginTop:32}}>
                   <button className="btn btn-outline btn-lg" onClick={()=>nav('detail', listing.id)}>Cancel</button>
                   <button className="btn btn-brand btn-lg" onClick={()=>setStep(2)} style={{flex:1}}>
-                    Pay after visit · ₹{fmt(listing.feeGST)} <Icon.arrow/>
+                    Continue · ₹{fmt(listing.feeGST)} <Icon.arrow/>
                   </button>
-                  <div style={{display:'flex',alignItems:'center',gap:8,marginTop:10,flexWrap:'wrap'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginTop:10}}>
                     <span style={{fontSize:11,color:'var(--text-muted)',fontWeight:600}}>Pay via:</span>
-                    {['PhonePe','UPI','Visa','Mastercard','RuPay','Net Banking'].map(g=>(
-                      <span key={g} style={{fontSize:10,padding:'3px 8px',borderRadius:4,border:'1px solid var(--border)',background:'var(--surface)',fontWeight:600,color:'var(--text-muted)'}}>{g}</span>
-                    ))}
+                    <span style={{fontSize:10,padding:'3px 8px',borderRadius:4,border:'1px solid var(--border)',background:'var(--surface)',fontWeight:600,color:'var(--text-muted)'}}>Cash on Delivery</span>
                   </div>
                 </div>
               </div>
@@ -102,52 +87,21 @@ function UnlockPage({nav, listing}) {
             {step === 2 && (
               <div className="pop-in">
                 <div style={{fontSize:12, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.08em', fontWeight:600}}>Step 2 / 3</div>
-                <h1 className="font-display" style={{fontSize:36, fontWeight:800, letterSpacing:'-0.03em', margin:'8px 0 16px'}}>Pay securely</h1>
+                <h1 className="font-display" style={{fontSize:36, fontWeight:800, letterSpacing:'-0.03em', margin:'8px 0 16px'}}>Payment method</h1>
                 <div className="muted" style={{fontSize:14, display:'flex', alignItems:'center', gap:8}}>
-                  <Icon.shield/> 256-bit encrypted · Powered by PhonePe · PCI-DSS compliant
+                  <Icon.shield/> Secure &amp; verified · Pay in person after your visit
                 </div>
 
-                <div style={{display:'flex', flexDirection:'column', gap:10, marginTop:28}}>
-                  <PaymentOption id="upi" active={method==='upi'} onClick={()=>setMethod('upi')}
-                    icon={<Icon.upi/>} label="UPI" sub="Pay with any UPI app · No charges" badge="Fastest"/>
-                  <PaymentOption id="card" active={method==='card'} onClick={()=>setMethod('card')}
-                    icon={<Icon.card/>} label="Debit / Credit card" sub="Visa, Mastercard, RuPay, Amex"/>
-                  <PaymentOption id="bank" active={method==='bank'} onClick={()=>setMethod('bank')}
-                    icon={<Icon.bank/>} label="Net banking" sub="50+ banks supported"/>
-                  <PaymentOption id="wallet" active={method==='wallet'} onClick={()=>setMethod('wallet')}
-                    icon={<Icon.wallet/>} label="Wallets" sub="Paytm, PhonePe, Amazon Pay"/>
+                <div style={{marginTop:28}}>
+                  <PaymentOption id="cod" active={true} onClick={()=>{}}
+                    icon={<span style={{fontSize:22}}>💵</span>}
+                    label="Cash on Delivery"
+                    sub="Pay in cash when you meet the owner · No online payment required"
+                    badge="Recommended"/>
                 </div>
 
-                {/* method-specific input */}
-                <div style={{marginTop:24, padding:24, background:'var(--surface-sunken)', borderRadius:'var(--r-md)'}}>
-                  {method === 'upi' && (
-                    <div>
-                      <label style={{fontSize:12, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.08em', fontWeight:600}}>UPI ID</label>
-                      <input className="input" placeholder="yourname@okhdfc" defaultValue="rahul@oksbi" style={{display:'block', width:'100%', marginTop:8, background:'var(--surface)'}}/>
-                      <div style={{display:'flex', alignItems:'center', gap:8, marginTop:14, fontSize:13, color:'var(--text-muted)'}}>
-                        or scan QR with any UPI app
-                      </div>
-                    </div>
-                  )}
-                  {method === 'card' && (
-                    <div style={{display:'grid', gap:10}}>
-                      <input className="input" placeholder="Card number" defaultValue="•••• •••• •••• 4242" style={{background:'var(--surface)'}}/>
-                      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:10}}>
-                        <input className="input" placeholder="MM / YY" defaultValue="12 / 27" style={{background:'var(--surface)'}}/>
-                        <input className="input" placeholder="CVV" type="password" defaultValue="123" style={{background:'var(--surface)'}}/>
-                      </div>
-                    </div>
-                  )}
-                  {method === 'bank' && (
-                    <select className="input select" style={{width:'100%', background:'var(--surface)'}}>
-                      <option>HDFC Bank</option><option>ICICI Bank</option><option>SBI</option><option>Axis Bank</option><option>Kotak Mahindra</option>
-                    </select>
-                  )}
-                  {method === 'wallet' && (
-                    <div style={{display:'flex', gap:10}}>
-                      {["Paytm","PhonePe","Amazon Pay"].map(w=><button key={w} className="btn btn-outline" style={{flex:1, background:'var(--surface)'}}>{w}</button>)}
-                    </div>
-                  )}
+                <div style={{marginTop:24, padding:20, background:'var(--surface-sunken)', borderRadius:'var(--r-md)', fontSize:13, color:'var(--text-muted)', lineHeight:1.6}}>
+                  <strong style={{color:'var(--text)'}}>How it works:</strong> Once you confirm, we'll unlock the owner's contact and full address instantly. Pay the fee in cash when you visit the property. Our team will follow up to verify.
                 </div>
 
                 {payError && (
@@ -159,7 +113,7 @@ function UnlockPage({nav, listing}) {
                 <div style={{display:'flex', gap:10, marginTop:24}}>
                   <button className="btn btn-outline btn-lg" onClick={()=>setStep(1)} disabled={processing}>Back</button>
                   <button className="btn btn-brand btn-lg" onClick={pay} disabled={processing} style={{flex:1}}>
-                    {processing ? "Processing…" : <>Pay ₹{fmt(listing.feeGST)} <Icon.unlock/></>}
+                    {processing ? "Confirming…" : <>Confirm & Unlock · ₹{fmt(listing.feeGST)} <Icon.unlock/></>}
                   </button>
                 </div>
               </div>
@@ -351,7 +305,7 @@ function SuccessScreen({listing, nav}) {
           Unlocked.<br/>The home is yours to call.
         </div>
         <p style={{fontSize:16, opacity:.85, marginTop:16, maxWidth:560, marginInline:'auto'}}>
-          Payment of <strong style={{opacity:1}}>₹{fmt(listing.feeGST)}</strong> received. Invoice on its way to your inbox.
+          Address & contact unlocked. Pay <strong style={{opacity:1}}>₹{fmt(listing.feeGST)}</strong> in cash when you meet the owner.
         </p>
       </div>
 
@@ -418,9 +372,9 @@ function SuccessScreen({listing, nav}) {
         <div style={{padding:18, background:'#FEF3C7', borderRadius:'var(--r-md)', display:'flex', alignItems:'flex-start', gap:14}}>
           <div style={{fontSize:20}}>⚡</div>
           <div>
-            <div style={{fontSize:13, fontWeight:700, color:'#78350F'}}>Refund guarantee</div>
+            <div style={{fontSize:13, fontWeight:700, color:'#78350F'}}>Zero-risk guarantee</div>
             <div style={{fontSize:12, color:'#92400E', marginTop:4, lineHeight:1.5}}>
-              If the address turns out to be invalid or the listing misrepresented, we refund 100% within 24 hours — no questions asked.
+              If the address turns out to be invalid or the listing is misrepresented, you don't pay anything — no questions asked.
             </div>
           </div>
         </div>

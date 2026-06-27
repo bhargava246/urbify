@@ -182,7 +182,6 @@ function CityPage({nav, savedIds, onSave, onUnlock}) {
         <Faq q="Is owning a vehicle necessary in Jaipur?" a="Two-wheelers are common and practical. Jaipur Metro connects Mansarovar to Badi Chaupar, making the Pink City area accessible. For the outskirts, a personal vehicle is helpful but not essential if you're near the metro corridor."/>
       </section>
 
-      <Footer nav={nav}/>
     </div>
   );
 }
@@ -368,7 +367,6 @@ function LocalityPage({nav, savedIds, onSave, onUnlock}) {
         </div>
       </section>
 
-      <Footer nav={nav}/>
     </div>
   );
 }
